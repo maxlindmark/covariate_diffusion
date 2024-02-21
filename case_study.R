@@ -53,7 +53,7 @@ library(terra)
 
 region = c("EBS", "GOA")[1]
 
-root_dir = R'(C:\Users\James.Thorson\Desktop\Git\covariate_diffusion)'
+root_dir = here::here(".")
 data_dir = file.path( root_dir, "data" )
 tmb_dir = file.path( root_dir, "tmb" )
 
