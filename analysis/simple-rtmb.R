@@ -5,16 +5,16 @@ library(RTMB)
 nll <- function(par) {
   getAll(par, tmb_data)
 
-  jnll <- 0
-
   # Derived quantities
-  Q <- (exp(4 * ln_kappa) * M0 + 2 * exp(2 * ln_kappa) * M1 + M2) * exp(2 * ln_tau)
-  jnll <- jnll - dgmrf(omega_s, 0, Q)
+  Q <- (exp(4 * ln_kappa) * M0 + 2 * exp(2 * ln_kappa) * M1 + M2) *
+    exp(2 * ln_tau)
+  omega_s %~% dgmrf(0, Q)
 
   # Probability of random effects
   if (method == "diffusion") {
     invKd <- exp(ln_tau2) * invsqrtM0 * (exp(2 * ln_kappa2) * M0 + M1)
-    invD <- invM0 * (M0 + exp(2 * ln_kappa2) * M0 + M1) / (1 + exp(2 * ln_kappa2))
+    invD <- invM0 * (M0 + exp(2 * ln_kappa2) * M0 + M1) /
+      (1 + exp(2 * ln_kappa2))
     invD <- Matrix::lu(invD) # CHECK
     REPORT(invD)
 
@@ -40,20 +40,14 @@ nll <- function(par) {
   # Probability of data conditional on random effects
   mu_i <- exp(beta0 + omega_i + pdepth_i)
   if (dist == "Poisson") {
-    for (i in seq_along(c_i)) {
-      jnll <- jnll - dpois(c_i(i), mu_i(i), true)
-    }
+    c_i %~% dpois(mu_i)
   }
   if (dist == "Tweedie") {
-    for (i in seq_along(c_i)) {
-      jnll <- jnll - dtweedie(c_i(i), mu_i(i), exp(ln_phi), 1 + plogis(finv_power), true)
-    }
+    c_i %~% dtweedie(mu_i, exp(ln_phi), 1 + plogis(finv_power))
   }
   if (dist == "LNP") {
-    for (i in seq_along(c_i)) {
-      jnll <- jnll - dnorm(eta_i(i), 0, exp(ln_sigma_eta), true)
-      jnll <- jnll - dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true)
-    }
+    eta_i %~% dnorm(0, exp(ln_sigma_eta))
+    c_i %~% dpois(c_i, mu_i * exp(eta_i))
   }
   mu_g <- exp(beta0 + omega_g + pdepth_g)
 
@@ -63,6 +57,4 @@ nll <- function(par) {
   REPORT(mu_g)
   REPORT(pdepth_i)
   REPORT(pdepth_g)
-
-  jnll
 }
