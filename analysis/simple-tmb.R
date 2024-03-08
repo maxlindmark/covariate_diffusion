@@ -72,6 +72,7 @@ Opt <- nlminb(
   grad = Obj$gr,
   control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
 )
+Opt
 
 # sdr <- sdreport(Obj)
 

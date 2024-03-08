@@ -64,5 +64,5 @@ distribution <- c("Tweedie", "Poisson", "LNP")[3] # Poisson is numerically unsta
 
 Date <- Sys.Date()
 date_dir <- file.path(root_dir, "results", paste0(Date, "_", f_depth, "_", distribution))
-dir.create(date_dir, recursive = TRUE)
+dir.create(date_dir, recursive = TRUE, showWarnings = FALSE)
 sf_usa <- ne_countries(country = "united states of america", return = "sf")
