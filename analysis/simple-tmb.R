@@ -31,7 +31,8 @@ Data <- list(
   "M2" = spde$g2,
   "invsqrtM0" = invsqrtM0,
   "invM0" = invM0,
-  "depth_s" = depthprime_s
+  "depth_s" = depthprime_s,
+  "sim_gmrf" = 0L #< new
 )
 
 Params <- list(
@@ -61,7 +62,8 @@ Obj <- MakeADFun(
   parameters = Params,
   # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
   random = Random,
-  checkParameterOrder = TRUE
+  checkParameterOrder = TRUE,
+  DLL = "movement_kernel"
 )
 Obj$env$beSilent()
 
@@ -74,6 +76,43 @@ Opt <- nlminb(
 )
 Opt
 
+r <- Obj$report()
+
 # sdr <- sdreport(Obj)
+
+# Simulation demo:
+
+set.seed(1)
+s <- Obj$simulate()
+
+plot(log(s$c_i+1), log(Data$c_i+1))
+plot(s$omega_s, r$omega_s) # not simulated
+
+# now demosntrate also simulating the GMRF:
+Data$sim_gmrf <- 1L
+
+obj2 <- MakeADFun(
+  data = Data,
+  random = Obj$env$random,
+  parameters = Obj$env$parList(),
+  DLL = "movement_kernel"
+)
+
+s2 <- obj2$simulate(complete = FALSE)
+plot(log(s2$c_i+1), log(Data$c_i+1))
+plot(s2$omega_s, r$omega_s) # simulated
+
+# demonstrate changing some parameters:
+p <- obj2$env$last.par.best
+table(names(p))
+p[names(p) == "beta0"] <- 2
+p[names(p) == "beta_j"] <- c(-1, 0.3)
+p[names(p) == "ln_sigma_eta"] <- 0.3
+p[names(p) == "ln_kappa"] <- -0.2
+p[names(p) == "ln_kappa2"] <- 1.1
+# ignore omega_s, it's getting simulated because Data$sim_gmrf is 1
+
+s3 <- obj2$simulate(par = p, complete = FALSE)
+plot(s3$omega_s, s2$omega_s)
 
 setwd(here::here())
