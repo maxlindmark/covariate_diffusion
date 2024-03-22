@@ -88,7 +88,7 @@ s <- Obj$simulate()
 plot(log(s$c_i+1), log(Data$c_i+1))
 plot(s$omega_s, r$omega_s) # not simulated
 
-# now demosntrate also simulating the GMRF:
+# now demonstrate also simulating the GMRF:
 Data$sim_gmrf <- 1L
 
 obj2 <- MakeADFun(
@@ -135,5 +135,5 @@ Opt <- nlminb(
 )
 Opt
 r <- Obj$report()
-sdr <- sdreport(Obj)
+# sdr <- sdreport(Obj)
 # pl <- as.list(sdr, "Estimate")
