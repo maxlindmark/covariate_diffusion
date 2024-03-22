@@ -115,4 +115,25 @@ p[names(p) == "ln_kappa2"] <- 1.1
 s3 <- obj2$simulate(par = p, complete = FALSE)
 plot(s3$omega_s, s2$omega_s)
 
-setwd(here::here())
+# now fit back to our simulated data:
+
+Data_sim <- Data
+Data_sim$c_i <- s3$c_i
+
+Obj <- MakeADFun(
+  data = Data_sim,
+  parameters = Params,
+  random = Random,
+  checkParameterOrder = TRUE,
+  DLL = "movement_kernel"
+)
+Opt <- nlminb(
+  start = Obj$par,
+  obj = Obj$fn,
+  grad = Obj$gr,
+  control = list(eval.max = 1e4, iter.max = 1e4)
+)
+Opt
+r <- Obj$report()
+sdr <- sdreport(Obj)
+# pl <- as.list(sdr, "Estimate")
