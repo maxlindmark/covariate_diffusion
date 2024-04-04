@@ -182,7 +182,8 @@ for( cI in seq_along(species_set) ){
                "M2" = spde$g2,
                "invsqrtM0" = invsqrtM0,
                "invM0" = invM0,
-               "depth_s" = depthprime_s )
+               "depth_s" = depthprime_s,
+               "sim_gmrf" = 0L )
   Params = list( "beta0"=0,
                  "beta_j" = c(0.1 ,0.1),
                  "ln_tau"=0,
