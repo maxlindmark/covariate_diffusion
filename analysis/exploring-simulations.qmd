@@ -1,0 +1,516 @@
+---
+title: "Exploring simulations"
+author: "Max, Jim, Sean"
+date: today
+date-format: iso
+toc: true
+format: 
+  html:
+    page-layout: full
+    embed-resources: true
+knitr: 
+  opts_chunk:
+    fig.align: center
+    out-width: 90%
+editor: source
+---
+
+```{r load libraries}
+#| message: false
+#| warning: false
+
+# Load libraries
+library(tidyr)
+library(dplyr)
+library(patchwork)
+library(RColorBrewer)
+library(terra) # Load terra to use extract... needed for prep-data
+library(ggtext)
+library(ggstats)
+library(ggdist)
+library(ggplot2)
+library(ggsidekick); theme_set(theme_sleek())
+```
+
+
+## Simulate data
+
+### Experiment 1: cross-experiment with diffusion and null model for simulating data and retrieving parameters
+
+- Simulate from yellowfin model
+- Vary sigma and the diffusion parameters. How well can we retrieve them?
+
+#### Fit a model to adult yellowfin sole
+... To get a feeling for some sensible starting values for parameters and to get a model to simulate form
+
+```{r load data}
+#| warning: false
+#| results: hide
+
+source(here::here("analysis/prep-data.R"))
+setwd(tmb_dir)
+compile("movement_kernel.cpp", framework = "TMBad")
+dyn.load(dynlib("movement_kernel"))
+# dyn.unload(dynlib("movement_kernel"))
+```
+
+#### Fit a model to adult yellowfin sole
+
+```{r}
+species_set <- colnames(region_data_all)[30:ncol(region_data_all)]
+N_c <- colSums(ifelse(region_data_all[, species_set] > 0, 1, 0))
+species_set <- species_set[N_c > 1000]
+
+param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_depth")
+
+cI <- match("a_yfs", species_set)
+species <- species_set[cI]
+
+f_depth
+if (f_depth == "identity") {
+  depthprime_s <- (depth_s / 100)
+  #depthprime_s <- (depth_s - mean(depth_s)) / sd(depth_s) # ML: Can we better estimate depth and depth sq if we square?
+  #depthprime_s <- (log(depth_s) - mean(log(depth_s))) / sd(log(depth_s)) # ML: Can we better estimate depth and depth sq if we square?
+} else if (f_depth == "log") {
+  depthprime_s <- log(depth_s) - 4.5
+}
+
+# cor(depthprime_s, depthprime_s^2)
+# depthprime_scaled <- (log(depth_s) - mean(log(depth_s))) / sd(log(depth_s)) # ML: Can we better estimate depth and depth sq if we square?
+# cor(depthprime_scaled, depthprime_scaled^2)
+
+Params <- list(
+  "beta0" = 0,
+  #"beta_j" = c(0.1, 0.1),
+  "beta_j" = 0.1,
+  "ln_tau" = 0,
+  "ln_kappa" = 0,
+  "omega_s" = rnorm(nrow(spde$c0)),
+  "ln_kappa2" = exp(-1)
+)
+
+Random <- "omega_s"
+
+# Special stuff
+#if (Data$dist == "LNP") {
+Params$ln_sigma_eta <- log(0.1)
+Params$eta_i <- rnorm(nrow(region_data_all))
+Random <- c(Random, "eta_i")
+```
+
+##### Diffusion model
+
+```{r fit diffusion model to a_yfs}
+Data_sim_diff <- list(
+  "method" = "diffusion",
+  "dist" = distribution,
+  "c_i" = region_data_all[, species],
+  "A_is" = A_is,
+  "A_gs" = A_gs,
+  "M0" = spde$c0,
+  "M1" = spde$g1,
+  "M2" = spde$g2,
+  "invsqrtM0" = invsqrtM0,
+  "invM0" = invM0,
+  "depth_s" = depthprime_s,
+  "sim_gmrf" = 0L #< new
+)
+
+Obj_sim_diff <- MakeADFun(
+  data = Data_sim_diff,
+  parameters = Params,
+  # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
+  random = Random,
+  checkParameterOrder = TRUE,
+  DLL = "movement_kernel"
+)
+
+Obj_sim_diff$env$beSilent()
+
+# Optimize
+Opt_sim_diff <- nlminb(
+  start = Obj_sim_diff$par,
+  obj = Obj_sim_diff$fn,
+  grad = Obj_sim_diff$gr,
+  control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
+)
+```
+
+##### Null model
+
+```{r fit null model to a_yfs}
+Data_sim_null <- list(
+  "method" = "null",
+  "dist" = distribution,
+  "c_i" = region_data_all[, species],
+  "A_is" = A_is,
+  "A_gs" = A_gs,
+  "M0" = spde$c0,
+  "M1" = spde$g1,
+  "M2" = spde$g2,
+  "invsqrtM0" = invsqrtM0,
+  "invM0" = invM0,
+  "depth_s" = depthprime_s,
+  "sim_gmrf" = 0L #< new
+)
+
+Obj_sim_null <- MakeADFun(
+  data = Data_sim_null,
+  parameters =  Params[setdiff(names(Params), c("ln_tau2","ln_kappa2"))],
+  # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
+  random = Random,
+  checkParameterOrder = TRUE,
+  DLL = "movement_kernel"
+)
+Obj_sim_null$env$beSilent()
+
+# Optimize
+Opt_sim_null <- nlminb(
+  start = Obj_sim_null$par,
+  obj = Obj_sim_null$fn,
+  grad = Obj_sim_null$gr,
+  control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
+)
+```
+
+#### Simulate `n_sim` data sets from both the diffussion operating model and the null model
+
+```{r set fixed effects}
+set.seed(99)
+
+n_sim <- 100
+
+# Diffusion operating model
+p_sim_diff <- Obj_sim_diff$env$last.par.best
+
+p_sim_diff[names(p_sim_diff) %in% c("beta0", "beta_j", "ln_sigma_eta",
+                                    "ln_tau", "ln_kappa", "ln_kappa2")] 
+  
+# Replace fitted parameters with fake, more rounded values
+p_sim_diff[names(p_sim_diff) == "beta0"] <- 2.9
+#p_sim_diff[names(p_sim_diff) == "beta_j"] <- c(-5.5, 0.02)
+p_sim_diff[names(p_sim_diff) == "beta_j"] <- -2.8
+p_sim_diff[names(p_sim_diff) == "ln_tau"] <- -1.8
+p_sim_diff[names(p_sim_diff) == "ln_kappa"] <- -0.8
+p_sim_diff[names(p_sim_diff) == "ln_kappa2"] <- 1.4
+p_sim_diff[names(p_sim_diff) == "ln_sigma_eta"] <- 0.25 
+
+# Lower ln_sigma_eta
+p_sim_diff2 <- p_sim_diff
+p_sim_diff2[names(p_sim_diff) == "ln_sigma_eta"] <- 0.1
+
+# Increase ln_sigma_eta
+p_sim_diff3 <- p_sim_diff
+p_sim_diff3[names(p_sim_diff3) == "ln_sigma_eta"] <- 0.5
+
+
+# Null operating model
+p_sim_null <- Obj_sim_null$env$last.par.best
+
+p_sim_null[names(p_sim_null) %in% c("beta0", "beta_j", "ln_sigma_eta",
+                                    "ln_tau", "ln_kappa", "ln_kappa2")] 
+  
+# Replace fitted parameters with fake, more rounded values
+p_sim_null[names(p_sim_null) == "beta0"] <- 0.6
+#p_sim_null[names(p_sim_null) == "beta_j"] <- c(-5.5, 0.02)
+p_sim_null[names(p_sim_null) == "beta_j"] <- -1.2
+# Keep these the same as for the diffusion model... 
+p_sim_null[names(p_sim_null) == "ln_tau"] <- -1.8
+p_sim_null[names(p_sim_null) == "ln_kappa"] <- -0.8
+p_sim_null[names(p_sim_null) == "ln_kappa2"] <- 1.4
+p_sim_null[names(p_sim_null) == "ln_sigma_eta"] <- 0.25 
+
+# Lower ln_sigma_eta
+p_sim_null2 <- p_sim_null
+p_sim_null2[names(p_sim_null) == "ln_sigma_eta"] <- 0.1
+
+# Increase ln_sigma_eta
+p_sim_null3 <- p_sim_null
+p_sim_null3[names(p_sim_null3) == "ln_sigma_eta"] <- 0.5
+
+
+# Now simulate 3 data sets with different ln_sigma_eta for each operating model
+sim_dat <- list()
+
+for(i in 1:n_sim) {
+
+  # Operating model = diffusion
+  sim_025_diff <- tibble(c_i = Obj_sim_diff$simulate(par = p_sim_diff, complete = FALSE)$c_i) %>% 
+    mutate(ln_sigma_eta = "0.25",
+           operating_model = "diffusion",
+           iter = i) 
+  
+  sim_01_diff <- tibble(c_i = Obj_sim_diff$simulate(par = p_sim_diff2, complete = FALSE)$c_i) %>%
+    mutate(ln_sigma_eta = "0.1",
+           operating_model = "diffusion",
+           iter = i)
+  
+  sim_50_diff <- tibble(c_i = Obj_sim_diff$simulate(par = p_sim_diff3, complete = FALSE)$c_i) %>% 
+    mutate(ln_sigma_eta = "0.5",
+           operating_model = "diffusion",
+           iter = i) 
+  
+  # Operating model = null
+  sim_025_null <- tibble(c_i = Obj_sim_null$simulate(par = p_sim_null, complete = FALSE)$c_i) %>% 
+    mutate(ln_sigma_eta = "0.25",
+           operating_model = "null",
+           iter = i) 
+  
+  sim_01_null <- tibble(c_i = Obj_sim_null$simulate(par = p_sim_null2, complete = FALSE)$c_i) %>%
+    mutate(ln_sigma_eta = "0.1",
+           operating_model = "null",
+           iter = i)
+  
+  sim_50_null <- tibble(c_i = Obj_sim_null$simulate(par = p_sim_null3, complete = FALSE)$c_i) %>% 
+    mutate(ln_sigma_eta = "0.5",
+           operating_model = "null",
+           iter = i) 
+
+  
+  
+  sim_dat[[i]] <- bind_rows(
+    sim_025_diff, sim_01_diff, sim_50_diff,
+    sim_025_null, sim_01_null, sim_50_null
+    )
+
+}
+
+sim_df <- bind_rows(sim_dat) %>% 
+  mutate(index = paste(iter, ln_sigma_eta, sep = "-"))
+```
+
+#### Fit models to simulated data
+
+I will fit two models; with and without diffusion. In this example, I draw 100 simulated data sets (based on the "rounded" fixed effect estimates while keeping the GMRF to the adult yellowfin sole values) in a for-loop and fit both models, then I extract the estimates.
+
+```{r fit to simulated data}
+#| results: hide
+# These are the parameters I'm tracking
+pars <- "beta_j" #c("beta_j", "beta_j")
+
+# Storage lists for each operating and estimating model
+pars_diff_list_sim_diff <- list()
+pars_null_list_sim_diff <- list()
+pars_diff_list_sim_null <- list()
+pars_null_list_sim_null <- list()
+
+# Loop through all n data sets 
+for(i in unique(sim_df$index)) {
+  
+  # Operating model = diffusion
+  Data_sim_diff <- Data_sim_diff
+  
+  Data_sim_diff$c_i <- sim_df %>%
+    filter(index == i & operating_model == "diffusion") %>% 
+    pull(c_i)
+
+  # Diffusion model
+  Data_sim_diff$method <- "diffusion"
+  
+  Obj_diff <- MakeADFun(
+    data = Data_sim_diff,
+    parameters = Params,
+    random = Random,
+    checkParameterOrder = TRUE,
+    DLL = "movement_kernel"
+    )
+  
+  Opt_diff <- nlminb(
+    start = Obj_diff$par,
+    obj = Obj_diff$fn,
+    grad = Obj_diff$gr,
+    control = list(eval.max = 1e4, iter.max = 1e4)
+    )
+  
+  pars_diff_list_sim_diff[[i]] <- 
+    tibble(par = c("beta[j1]"),
+    #tibble(par = c("beta[j1]", "beta[j2]"),
+           est = Opt_diff$par[names(Opt_diff$par) %in% pars]) %>%
+    mutate(index = i, 
+           `Estimation model` = "Diffusion",
+           `Operating model` = "Operating model = Diffusion"
+           )
+
+  
+  # Now do the model without diffusion
+  Data_sim_diff$method <- "null"
+  Params_null = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
+  
+  Obj_null <- MakeADFun(
+    data = Data_sim_diff,
+    parameters = Params_null,
+    random = Random,
+    checkParameterOrder = TRUE,
+    DLL = "movement_kernel"
+    )
+  
+  Opt_null <- nlminb(
+    start = Obj_null$par,
+    obj = Obj_null$fn,
+    grad = Obj_null$gr,
+    control = list(eval.max = 1e4, iter.max = 1e4)
+    )
+  
+  pars_null_list_sim_diff[[i]] <-
+    tibble(par = c("beta[j1]"),
+    #tibble(par = c("beta[j1]", "beta[j2]"),
+           est = Opt_null$par[names(Opt_null$par) %in% pars]) %>%
+    mutate(index = i, 
+           `Estimation model` = "Null",
+           `Operating model` = "Operating model = Diffusion")
+  
+  
+  
+  
+  
+  
+  # Operating model = null
+  Data_sim_null <- Data_sim_null
+  
+  Data_sim_null$c_i <- sim_df %>%
+    filter(index == i & operating_model == "null") %>% 
+    pull(c_i)
+
+  # Diffusion model
+  Data_sim_null$method <- "diffusion"
+  
+  Obj_diff <- MakeADFun(
+    data = Data_sim_null,
+    parameters = Params,
+    random = Random,
+    checkParameterOrder = TRUE,
+    DLL = "movement_kernel"
+    )
+  
+  Opt_diff <- nlminb(
+    start = Obj_diff$par,
+    obj = Obj_diff$fn,
+    grad = Obj_diff$gr,
+    control = list(eval.max = 1e4, iter.max = 1e4)
+    )
+  
+  pars_diff_list_sim_null[[i]] <- 
+    tibble(par = c("beta[j1]"),
+    #tibble(par = c("beta[j1]", "beta[j2]"),
+           est = Opt_diff$par[names(Opt_diff$par) %in% pars]) %>%
+    mutate(index = i, 
+           `Estimation model` = "Diffusion",
+           `Operating model` = "Operating model = Null"
+           )
+
+  
+  # Now do the model without diffusion
+  Data_sim_null$method <- "null"
+  Params_null = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
+  
+  Obj_null <- MakeADFun(
+    data = Data_sim_null,
+    parameters = Params_null,
+    random = Random,
+    checkParameterOrder = TRUE,
+    DLL = "movement_kernel"
+    )
+  
+  Opt_null <- nlminb(
+    start = Obj_null$par,
+    obj = Obj_null$fn,
+    grad = Obj_null$gr,
+    control = list(eval.max = 1e4, iter.max = 1e4)
+    )
+  
+  pars_null_list_sim_null[[i]] <-
+    tibble(par = c("beta[j1]"),
+    #tibble(par = c("beta[j1]", "beta[j2]"),
+           est = Opt_null$par[names(Opt_null$par) %in% pars]) %>%
+    mutate(index = i, 
+           `Estimation model` = "Null",
+           `Operating model` = "Operating model = Null")
+  
+}
+```
+
+```{r}
+# Make a dataframe for plotting
+pars_df <- bind_rows(
+  bind_rows(pars_diff_list_sim_diff),
+  bind_rows(pars_null_list_sim_diff),
+  bind_rows(pars_diff_list_sim_null),
+  bind_rows(pars_null_list_sim_null)
+  ) %>% 
+  separate_wider_delim(index, delim = "-", names = c("iter", "ln_sigma_eta"))
+```
+
+Plot how well the models can retrieve the true depth coefficients
+
+```{r}
+#| fig-height: 7
+# True values (horizontal lines)
+true <- tibble(value = c(as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
+                         as.numeric(p_sim_null[names(p_sim_null) == "beta_j"])),
+               par = c("beta[j1]"),
+               `Operating model` = c("Operating model = Diffusion",
+                                     "Operating model = Null"), 
+               )
+
+pal <- colorRampPalette(brewer.pal(10, "BrBG"))(20)[c(13, 15, 18)]
+
+ggplot(pars_df, aes(`Estimation model`, est, fill = ln_sigma_eta, color = ln_sigma_eta)) +
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.85, jitter.width = 0.1, jitter.height = 0),
+              alpha = 0.4, shape = 21, color = "white", size = 2) +
+  stat_halfeye(alpha = 0.5, color = NA, position = position_dodge(width = 0.85)) +
+  stat_pointinterval(position = position_dodge(width = 0.85), color = "grey20") +
+  labs(y = "Estimated depth coefficients", x = "Estimation model") +
+  geom_hline(data = true, aes(yintercept = value),
+             alpha = 0.6, linetype = 2) +
+  facet_wrap(~`Operating model`, scales = "free", ncol = 2) +
+  scale_color_manual(values = pal, name = "") +
+  scale_fill_manual(values = pal, name = "ln_sigma_eta") +
+  guides(color = "none", fill = guide_legend(position = "inside")) +
+  theme(legend.position.inside = c(0.07, 0.9))
+
+ggsave(paste0(here::here(), "/results/sims.pdf"), width = 20, height = 13, unit = "cm")
+  
+# Actually, make the x variable the estimation model and color in three categories the sigma... the repeat for the other operating model
+# pars_df %>%
+#   mutate(`Estimation model` = ifelse(`Estimation model` == "Diffusion",
+#                                      "Estimation model = Diffusion",
+#                                      "Estimation model = Null")) %>%
+#   ggplot(aes(ln_sigma_eta, est, fill = ln_sigma_eta, color = ln_sigma_eta)) +
+#   geom_jitter(position = position_jitterdodge(dodge.width = 1, jitter.width = 0.1, jitter.height = 0),
+#               alpha = 0.3) +
+#   stat_halfeye(alpha = 0.5, color = NA, position = position_dodge(width = 1)) +
+#   geom_boxplot(width = 0.1, fill = NA, outlier.colour = NA, position = position_dodge(width = 1)) +
+#   labs(y = "Estimated depth coefficients", x = "") +
+#   geom_hline(data = true, aes(yintercept = value),
+#              alpha = 0.6, linetype = 2) +
+#   #facet_wrap(~par, scales = "free", ncol = 1, labeller = label_parsed) +
+#   #facet_wrap(~`Operating model`, scales = "free", ncol = 2) +
+#   facet_grid(`Operating model` ~ `Estimation model`, scales = "free") +
+#   scale_color_manual(values = pal, name = "") +
+#   scale_fill_manual(values = pal, name = "") +
+#   guides(fill = "none", color = "none") +
+#   theme(strip.text.y.right = element_text(angle = 270),
+#         legend.position = "bottom")
+```
+
+### Experiment 3: Simulating only data, not GMRFs
+
+- Change the operating model to a non-diffusion one (i.e., simulate data from model parameters that do not show diffusion)
+- Compare the estimation models
+- Is this interesting or more for completeness sake?
+
+```{r}
+# TODO
+```
+
+### Experiment 4: Add in GMRFs to the simulations
+
+- Repeat at least experiment 1--2? Or make a new experiment?
+
+```{r}
+# TODO
+```
+
+
+
+
