@@ -15,6 +15,12 @@ res <- read.csv(paste0(here::here(), "/results/2024-04-04_identity_LNP/Results_c
                     paste0("<span style=\"color: ", "tomato3", "\">", X, "</span>"),
                     X))
 
+ggplot(res, aes(ln_kappa2)) +
+  geom_histogram()
+
+ggsave(paste0(here::here(), "/results/ln_kappa2_hist.pdf"), width = 11, height = 11, unit = "cm")
+
+
 p1 <- ggplot(res, aes(corr_depth, reorder(X, desc(deltaAIC)))) +
   geom_point() +
   labs(x = "Correlation between depth\nand diffused depth",
@@ -34,3 +40,5 @@ p3 <- ggplot(res, aes(log(range), reorder(X, desc(deltaAIC)))) +
 p1 + p2 + p3 + plot_layout(guides = "collect", axes = "collect") &
   theme(legend.position = "bottom",
         axis.text.y = ggtext::element_markdown())
+
+ggsave(paste0(here::here(), "/results/delta_aic_range.pdf"), width = 20, height = 17, unit = "cm", device = cairo_pdf)
