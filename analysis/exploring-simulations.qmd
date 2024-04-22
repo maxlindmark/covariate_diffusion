@@ -582,7 +582,6 @@ for(i in unique(sim_df_kappa$index_k)) {
 }
 ```
 
-
 ```{r}
 # Make dataframes for plotting
 pars_df <- bind_rows(
@@ -641,7 +640,7 @@ aic_df_kappa %>%
   geom_text() + 
   ggtitle("Operating model = Diffusion")
 
-ggsave(paste0(here::here(), "/results/confusion_table.pdf"), width = 11, height = 11, unit = "cm")
+ggsave(paste0(here::here(), "/results/confusion_table_kappa.pdf"), width = 11, height = 11, unit = "cm")
 ```
 
 Plot how well the models can retrieve the true depth coefficients
