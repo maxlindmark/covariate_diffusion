@@ -11,7 +11,7 @@ Type objective_function<Type>::operator() ()
   DATA_STRING(method);
   DATA_STRING(dist);
   DATA_VECTOR(c_i);  // counts for observation i
-  DATA_VECTOR(depth_s);  // counts for observation i
+  DATA_VECTOR(pop_dens_s);  // counts for observation i
   DATA_INTEGER(sim_gmrf) // simulate GMRFs?
 
   // SPDE objects
@@ -34,7 +34,7 @@ Type objective_function<Type>::operator() ()
   // Random effects
   PARAMETER_VECTOR(omega_s);
 
-  // Objective funcction
+  // Objective function
   Type jnll = 0.0;
 
   // Derived quantities
@@ -54,9 +54,11 @@ Type objective_function<Type>::operator() ()
     REPORT(invD);
 
     // Solve
-    matrix<Type> depth_sz = lu.solve(depth_s.matrix());;
+    //matrix<Type> depth_sz = lu.solve(depth_s.matrix());;
+    matrix<Type> pop_dens_sz = lu.solve(pop_dens_s.matrix());;
 
-    depth_s = depth_sz.col(0); // turn one column matrix to vector
+    //depth_s = depth_sz.col(0); // turn one column matrix to vector
+    pop_dens_s = pop_dens_sz.col(0); // turn one column matrix to vector
 
     //Type SigmaD = 1 / sqrt(4 * M_PI * exp(2*ln_tau2) * exp(2*ln_kappa2));
     Type Range2 = sqrt(8) / exp(ln_kappa2);
@@ -64,18 +66,18 @@ Type objective_function<Type>::operator() ()
     //REPORT(SigmaD);
     REPORT(ln_kappa2);
   }
-  vector<Type> depth_i = A_is * depth_s;
-  vector<Type> depth_g = A_gs * depth_s;
-  REPORT(depth_s);
-  REPORT(depth_i);
-  REPORT(depth_g);
+  vector<Type> pop_dens_i = A_is * pop_dens_s;
+  vector<Type> pop_dens_g = A_gs * pop_dens_s;
+  REPORT(pop_dens_s);
+  REPORT(pop_dens_i);
+  REPORT(pop_dens_g);
   vector<Type> omega_i = A_is * omega_s;
   vector<Type> omega_g = A_gs * omega_s;
-  vector<Type> pdepth_i = depth_i*beta_j(0) + pow(depth_i,2)*beta_j(1);
-  vector<Type> pdepth_g = depth_g*beta_j(0) + pow(depth_g,2)*beta_j(1);
+  vector<Type> ppop_dens_i = pop_dens_i*beta_j(0);
+  vector<Type> ppop_dens_g = pop_dens_g*beta_j(0);
 
   // Probability of data conditional on random effects
-  vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
+  vector<Type> mu_i = exp(beta0 + omega_i + ppop_dens_i);
   if(dist=="Poisson"){
     for(int i=0; i<c_i.size(); i++){
       jnll -= dpois(c_i(i), mu_i(i), true);
@@ -102,15 +104,15 @@ Type objective_function<Type>::operator() ()
       }
     }
   }
-  vector<Type> mu_g = exp(beta0 + omega_g + pdepth_g);
+  vector<Type> mu_g = exp(beta0 + omega_g + ppop_dens_g);
 
   // Reporting
   REPORT(Q);
   REPORT(omega_s);
   REPORT(mu_i);
   REPORT(mu_g);
-  REPORT(pdepth_i);
-  REPORT(pdepth_g);
+  REPORT(ppop_dens_i);
+  REPORT(ppop_dens_g);
 
   SIMULATE {
     REPORT(c_i);
