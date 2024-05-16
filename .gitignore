@@ -3,3 +3,7 @@
 *.so
 results
 .Rproj.user
+
+
+exploring-simulations_files
+exploring-simulations.rmarkdown
