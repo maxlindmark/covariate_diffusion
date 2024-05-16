@@ -53,7 +53,7 @@ diag(invM0) <- 1 / diag(spde$c0)
 
 # Get depth at vertices of SPDE mesh
 mesh_points <- sf_project(mesh$loc[, 1:2], from = st_crs(4326), to = st_crs(bdepth))
-depth_s <- extract(bdepth, mesh_points)[, 1]
+depth_s <- terra::extract(bdepth, mesh_points)[, 1]
 
 # FIll in missing covariates
 # FIXME:  Could be done using 0 for land and positive values otherwise
