@@ -51,8 +51,8 @@ library(ggsidekick); theme_set(theme_sleek())
 
 source(here::here("analysis/prep-data.R"))
 setwd(tmb_dir)
-compile("movement_kernel.cpp", framework = "TMBad")
-dyn.load(dynlib("movement_kernel"))
+compile("movement_kernel_sim.cpp", framework = "TMBad")
+dyn.load(dynlib("movement_kernel_sim"))
 # dyn.unload(dynlib("movement_kernel"))
 ```
 
@@ -101,6 +101,7 @@ Random <- c(Random, "eta_i")
 ##### Diffusion estimation model
 
 ```{r fit diffusion model to a_yfs}
+#| results: hide
 Data_sim_diff <- list(
   "method" = "diffusion",
   "dist" = distribution,
@@ -122,7 +123,7 @@ Obj_sim_diff <- MakeADFun(
   # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
   random = Random,
   checkParameterOrder = TRUE,
-  DLL = "movement_kernel"
+  DLL = "movement_kernel_sim"
 )
 
 Obj_sim_diff$env$beSilent()
@@ -139,6 +140,8 @@ Opt_sim_diff <- nlminb(
 ##### Null estimation model
 
 ```{r fit null model to a_yfs}
+#| results: hide
+
 Data_sim_null <- list(
   "method" = "null",
   "dist" = distribution,
@@ -160,7 +163,7 @@ Obj_sim_null <- MakeADFun(
   # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
   random = Random,
   checkParameterOrder = TRUE,
-  DLL = "movement_kernel"
+  DLL = "movement_kernel_sim"
 )
 Obj_sim_null$env$beSilent()
 
@@ -314,6 +317,7 @@ I will fit two models; with and without diffusion. In this example, I draw 100 s
 
 ```{r fit to simulated data}
 #| results: hide
+
 # These are the parameters I'm tracking
 pars <- "beta_j"
 
@@ -348,7 +352,7 @@ for(i in unique(sim_df_main$index)) {
     parameters = Params,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
   
   Opt_diff <- nlminb(
@@ -376,7 +380,7 @@ for(i in unique(sim_df_main$index)) {
     parameters = Params_null,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
   
   Opt_null <- nlminb(
@@ -425,7 +429,7 @@ for(i in unique(sim_df_main$index)) {
     parameters = Params,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
 
   Opt_diff <- nlminb(
@@ -453,7 +457,7 @@ for(i in unique(sim_df_main$index)) {
     parameters = Params_null,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
 
   Opt_null <- nlminb(
@@ -487,6 +491,8 @@ for(i in unique(sim_df_main$index)) {
 ```
 
 ```{r fit to simulated data vary ln_kappa2}
+#| results: hide
+
 # This only uses the diffusion OM 
 # I track beta and kappa2
 # I do not do the AIC confusion matrix since we don't look at accuracy of finding the right model, just parameter estimation
@@ -520,7 +526,7 @@ for(i in unique(sim_df_kappa$index_k)) {
     parameters = Params,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
   
   Opt_diff <- nlminb(
@@ -548,7 +554,7 @@ for(i in unique(sim_df_kappa$index_k)) {
     parameters = Params_null,
     random = Random,
     checkParameterOrder = TRUE,
-    DLL = "movement_kernel"
+    DLL = "movement_kernel_sim"
     )
   
   Opt_null <- nlminb(
@@ -592,7 +598,7 @@ pars_df <- bind_rows(
   ) %>% 
   separate_wider_delim(index, delim = "-", names = c("iter", "ln_sigma_eta"))
 
-write_csv(pars_df, paste0(here::here(), "/results/pars_df.csv"))
+write_csv(pars_df, paste0(here::here(), "/results/simulation/pars_df.csv"))
 
 pars_df_kappa <- bind_rows(
   bind_rows(pars_null_list_sim_diff_kappa),
@@ -600,20 +606,20 @@ pars_df_kappa <- bind_rows(
   ) %>% 
   separate_wider_delim(index, delim = "-", names = c("iter", "ln_sigma_eta", "ln_kappa2"))
 
-write_csv(pars_df_kappa, paste0(here::here(), "/results/pars_df_kappa.csv"))
+write_csv(pars_df_kappa, paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
 
 aic_df <- bind_rows(
   bind_rows(aic_list_null_om),
   bind_rows(aic_list_diff_om)
   )
 
-write_csv(aic_df, paste0(here::here(), "/results/aic_df.csv"))
+write_csv(aic_df, paste0(here::here(), "/results/simulation/aic_df.csv"))
 
 aic_df_kappa <- bind_rows(
   bind_rows(aic_list_diff)
   )
 
-write_csv(aic_df_kappa, paste0(here::here(), "/results/aic_df_kappa.csv"))
+write_csv(aic_df_kappa, paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
 ```
 
 AIC confusion matrix
@@ -625,7 +631,7 @@ aic_df %>%
   ggplot(aes(`Operating model`, `Estimation model`, label = count)) +
   geom_text()
 
-ggsave(paste0(here::here(), "/results/confusion_table.pdf"), width = 11, height = 11, unit = "cm")
+ggsave(paste0(here::here(), "/results/simulation/confusion_table.pdf"), width = 11, height = 11, unit = "cm")
 ```
 
 How does AIC difference between the estimation models and diffusion operating model change with ln_kappa?
@@ -640,7 +646,7 @@ aic_df_kappa %>%
   geom_text() + 
   ggtitle("Operating model = Diffusion")
 
-ggsave(paste0(here::here(), "/results/confusion_table_kappa.pdf"), width = 11, height = 11, unit = "cm")
+ggsave(paste0(here::here(), "/results/simulation/confusion_table_kappa.pdf"), width = 11, height = 11, unit = "cm")
 ```
 
 Plot how well the models can retrieve the true depth coefficients
@@ -671,7 +677,7 @@ ggplot(pars_df, aes(`Estimation model`, est, fill = ln_sigma_eta, color = ln_sig
   guides(color = "none", fill = guide_legend(position = "inside")) +
   theme(legend.position.inside = c(0.07, 0.9))
 
-ggsave(paste0(here::here(), "/results/sims.pdf"), width = 20, height = 13, unit = "cm")
+ggsave(paste0(here::here(), "/results/simulation/sims.pdf"), width = 20, height = 13, unit = "cm")
 ```
 
 Plot how well the models can retrieve the true depth coefficients (and kappa) with kappa variation and only the diffusion OM
@@ -698,7 +704,7 @@ ggplot(pars_df_kappa2, aes(`Estimation model`, est)) +
   guides(color = "none", fill = guide_legend(position = "inside")) +
   theme(legend.position.inside = c(0.07, 0.93))
 
-ggsave(paste0(here::here(), "/results/sims_beta_kappa.pdf"), width = 20, height = 11, unit = "cm")
+ggsave(paste0(here::here(), "/results/simulation/sims_beta_kappa.pdf"), width = 20, height = 11, unit = "cm")
 
 # How well can we retrieve kappa?
 # True values (horizontal lines)
@@ -722,6 +728,6 @@ ggplot(pars_df_kappa %>% filter(par == "ln_kappa2" & ln_sigma_eta == 0.25),
         strip.background = element_blank(),
         strip.text.x = element_blank())
 
-ggsave(paste0(here::here(), "/results/sims_kappa.pdf"), width = 17, height = 11, unit = "cm")
+ggsave(paste0(here::here(), "/results/simulation/sims_kappa.pdf"), width = 17, height = 11, unit = "cm")
 ```
 
