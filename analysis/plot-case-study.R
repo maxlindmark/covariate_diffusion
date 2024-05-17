@@ -11,7 +11,7 @@ library(terra) # Load terra to use extract... needed for prep-data
 ### Explore results from the case study
 
 # Read data
-bering <- read.csv(paste0(here::here(), "/results/2024-04-04_identity_LNP/Results_cz.csv")) %>%
+bering <- read.csv(paste0(here::here(), "/results/2024-05-16_identity_LNP/Results_cz.csv")) %>%
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC > 0, "N", "Y"),
          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
 
@@ -73,7 +73,7 @@ p1 <- ggplot(bb, aes(deltaAIC, reorder(X, desc(deltaAIC)),
 
 p2 <- ggplot(bb, aes(corr_pop_dens, reorder(X, desc(deltaAIC)))) +
   geom_point() +
-  labs(x = "Correlation between depth\nand diffused depth",
+  labs(x = "Correlation between log pop dens\nand diffused pop dens",
        y = "Species")
 
 p3 <- ggplot(bb, aes(log(range), reorder(X, desc(deltaAIC)))) +
