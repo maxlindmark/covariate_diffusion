@@ -6,7 +6,6 @@ library(ggstats)
 library(patchwork)
 library(ggplot2)
 library(ggsidekick); theme_set(theme_sleek())
-library(terra) # Load terra to use extract... needed for prep-data
 
 ### Explore results from the case study
 
