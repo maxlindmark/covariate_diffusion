@@ -12,11 +12,11 @@ library(terra) # Load terra to use extract... needed for prep-data
 
 # Read data
 bering <- read.csv(paste0(here::here(), "/results/2024-05-16_identity_LNP/Results_cz.csv")) %>%
-  mutate("Diffusion\nfavoured" = ifelse(deltaAIC > 0, "N", "Y"),
+  mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y"),
          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
 
 bb <- read.csv(paste0(here::here(), "/results/2024-05-16__Poisson/Results_bb_cz.csv")) %>%
-  mutate("Diffusion\nfavoured" = ifelse(deltaAIC > 0, "N", "Y"),
+  mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y"),
          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
 
 # Plot $\Delta$AIC, correlation between depth and diffused depth, the range estimate and ln_kappa2
