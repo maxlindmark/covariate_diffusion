@@ -14,7 +14,7 @@ compile( "movement_kernel_bb.cpp", framework="TMBad" )
 dyn.load( dynlib("movement_kernel_bb") )
 
 # saving stuff
-species_set = colnames(sf_DF)[4:23]
+species_set = colnames(sf_DF)[3:22]
 
 sf_DF <- as.data.frame(sf_DF)
 

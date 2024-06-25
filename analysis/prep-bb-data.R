@@ -20,14 +20,15 @@ data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
 
 # Load data
-DF = read.csv(file.path(data_dir, "BB/Top20_Samples.csv"))
+DF_raw = read.csv(file.path(data_dir, "BB/Top20_Samples.csv"))# |>
+  #mutate(id = paste(Latitude, Longitude, sep = "_"))
 #trait_set = read.csv( "Top20_traits.csv" )
 
 # Pivot wider so that 1 species = 1 column
-DF <- DF %>%
+DF <- DF_raw %>%
+  dplyr::select(-AOU) |>
   pivot_wider(names_from = Genus_species,
-              values_from = SpeciesTotal,
-              values_fill = 0)
+              values_from = SpeciesTotal)
 
 # Load population density
 pop_dens = st_read( file.path(data_dir, "BB/population_density.csv"), options=c("X_POSSIBLE_NAMES=X","Y_POSSIBLE_NAMES=Y"), crs=st_crs("+proj=longlat +datum=WGS84") )
@@ -137,3 +138,4 @@ Date = Sys.Date()
 date_dir = file.path(root_dir, "results", paste0(Date,"_","_",distribution) )
 dir.create(date_dir, recursive=TRUE)
 sf_usa = ne_countries( country="united states of america", return="sf" )
+
