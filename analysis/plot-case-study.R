@@ -14,7 +14,11 @@ bering <- read.csv(paste0(here::here(), "/results/2024-05-16_identity_LNP/Result
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y"),
          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
 
-bb <- read.csv(paste0(here::here(), "/results/2024-05-16__Poisson/Results_bb_cz.csv")) %>%
+# bb <- read.csv(paste0(here::here(), "/results/2024-05-16__Poisson/Results_bb_cz.csv")) %>%
+#   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y"),
+#          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
+
+bb <- read.csv(paste0(here::here(), "/results/2024-06-25__LNP/Results_bb_cz.csv")) %>%
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y"),
          abs_delta_aic = ifelse(abs(deltaAIC) > 2, "<2", ">2"))
 

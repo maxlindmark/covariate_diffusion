@@ -45,7 +45,6 @@ sf_states = st_union(sf_states)
 # Create data-frame
 sf_DF = st_as_sf( DF, coords=c("Longitude","Latitude"), crs="+proj=longlat +datum=WGS84")
 
-# TODO: grid or continuous locations?
 sf_fullgrid = st_make_grid( sf_DF, cellsize=1, square=FALSE )
 sf_grid = st_make_valid(st_intersection( sf_fullgrid, sf_states ))
 sf_grid = sf_grid[ st_area(sf_grid)>(0.01*max(st_area(sf_grid))) ]    # or 0.01
@@ -62,7 +61,7 @@ df_grid$log_pop_dens = log(df_grid$pop_dens)
 df_grid = data.frame(df_grid)
 
 
-sf_DF = st_intersection( sf_DF, st_union(sf_grid) )
+sf_DF = st_intersection( sf_DF, st_union(sf_grid) ) # ML think we can ignore this warning?
 # Since I made the data wide to better match the Bering Sea case study script I skip this
 #sf_DF$Genus_species = factor(sf_DF$Genus_species)
 temp_DF = get_elev_point( sf_DF, src = "aws" )
@@ -102,8 +101,19 @@ diag(invM0) = 1 / diag(spde$c0)
 mesh_points = mesh$loc[,1:2]
 pop_dens_s = raster::extract( as_spatraster(pop_dens), mesh_points )[,2] # Dens2020
 
+# Alternative way using raster and not as_spatraster
+# t <- rasterFromXYZ(st_drop_geometry(pop_dens |> dplyr::select(X, Y, Dens2020)) |> as.data.frame(),
+#                    crs = "+proj=longlat +datum=WGS84")
+#t <- st_rasterize()
+#class(t)
+#plot(t)
+#pop_dens_s = raster::extract( x = t, y = mesh_points)#[,2] # Dens2020
+
 # FIll in missing covariates
 # FIXME:  Could be done using 0 for land and positive values otherwise
+# length(pop_dens_s)
+# length(na.omit(pop_dens_s))
+
 pop_dens_s = ifelse( is.na(pop_dens_s), mean(pop_dens_s,na.rm=TRUE), pop_dens_s )
 
 pop_dens_s <- log(pop_dens_s)
@@ -120,7 +130,7 @@ pop_dens_s <- log(pop_dens_s)
 # TMB
 ################
 
-distribution = c("Tweedie", "Poisson", "LNP")[2] # Trying a Poisson first...
+distribution = c("Tweedie", "Poisson", "LNP")[3] # Trying LNP
 
 #
 Date = Sys.Date()

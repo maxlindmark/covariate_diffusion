@@ -58,7 +58,7 @@ for( cI in seq_along(species_set) ){
   }
   if( Data$dist == "LNP" ){
     Params$ln_sigma_eta = log(0.1)
-    Params$eta_i = rnorm(nrow(region_data_all))
+    Params$eta_i = rnorm(nrow(sf_DF))
     Random = c(Random, "eta_i")
   }
 
