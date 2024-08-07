@@ -20,12 +20,11 @@ data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
 
 # Load data
-DF_raw = read.csv(file.path(data_dir, "BB/Top20_Samples.csv"))# |>
-  #mutate(id = paste(Latitude, Longitude, sep = "_"))
+DF_raw = read.csv(file.path(data_dir, "BB/Top20_Samples.csv"))
 #trait_set = read.csv( "Top20_traits.csv" )
 
 # Pivot wider so that 1 species = 1 column
-DF <- DF_raw %>%
+DF <- DF_raw |>
   dplyr::select(-AOU) |>
   pivot_wider(names_from = Genus_species,
               values_from = SpeciesTotal)
@@ -120,8 +119,8 @@ pop_dens_s = ifelse( is.na(pop_dens_s), mean(pop_dens_s,na.rm=TRUE), pop_dens_s 
 pop_dens_s <- log(pop_dens_s)
 
 # Explore
-# sf_DF %>%
-#   pivot_longer(4:23) %>%
+# sf_DF |>
+#   pivot_longer(4:23) |>
 #   ggplot(aes(log_pop_dens, value)) +
 #   geom_smooth(alpha = 0.2) +
 #   facet_wrap(~name, scales = "free")
@@ -135,7 +134,7 @@ distribution = c("Tweedie", "Poisson", "LNP")[3] # Trying LNP
 
 #
 Date = Sys.Date()
-date_dir = file.path(root_dir, "results", paste0(Date,"_","_",distribution) )
+date_dir = file.path(root_dir, "results", paste0(Date,"_",distribution) )
 dir.create(date_dir, recursive=TRUE)
 sf_usa = ne_countries( country="united states of america", return="sf" )
 
