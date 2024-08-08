@@ -245,7 +245,7 @@ Now loop through each simulation index and simulate data given different paramet
 
 ```{r simulate data}
 set.seed(99)
-n_sim <- 200
+n_sim <- 100
 
 sim_dat <- function(obj = obj, par = par, operating_model = NA,
                     ln_sigma_eta = NA, ln_kappa_2 = NA, iter = NA) {
@@ -600,6 +600,7 @@ pars_df <- bind_rows(
   separate_wider_delim(index, delim = "-", names = c("iter", "ln_sigma_eta"))
 
 write_csv(pars_df, paste0(here::here(), "/results/simulation/pars_df.csv"))
+#pars_df <- read_csv(paste0(here::here(), "/results/simulation/pars_df.csv"))
 
 pars_df_kappa <- bind_rows(
   bind_rows(pars_null_list_sim_diff_kappa),
@@ -608,6 +609,7 @@ pars_df_kappa <- bind_rows(
   separate_wider_delim(index, delim = "-", names = c("iter", "ln_sigma_eta", "ln_kappa2"))
 
 write_csv(pars_df_kappa, paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
+#pars_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
 
 aic_df <- bind_rows(
   bind_rows(aic_list_null_om),
@@ -615,12 +617,14 @@ aic_df <- bind_rows(
   )
 
 write_csv(aic_df, paste0(here::here(), "/results/simulation/aic_df.csv"))
+#aic_df <- read_csv(paste0(here::here(), "/results/simulation/aic_df.csv"))
 
 aic_df_kappa <- bind_rows(
   bind_rows(aic_list_diff)
   )
 
 write_csv(aic_df_kappa, paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
+#aic_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
 ```
 
 AIC confusion matrix
@@ -689,14 +693,15 @@ ggplot(pars_df, aes(`Estimation model`, est, fill = ln_sigma_eta, color = ln_sig
   labs(y = "Estimated depth coefficient", x = "Estimation model") +
   geom_hline(data = true, aes(yintercept = value),
              alpha = 0.6, linetype = 2) +
-  labs(fill = expression(paste("log(", sigma[eta], ")"))) +
+  labs(fill = c(expression(atop(paste("Observation error SD"),paste("\nlog(", sigma[eta], ")"))))) +
   facet_wrap(~`Operating model`, ncol = 2) +
   scale_color_manual(values = pal, name = "") +
   scale_fill_manual(values = pal) +
-  guides(color = "none", fill = guide_legend(position = "inside")) +
+  guides(color = "none", fill = guide_legend(position = "inside", title.position = "top")) +
   geom_text(data = aic_df_sum, aes(label = count_prop, color = ln_sigma_eta),
             size = 3.5, position = position_dodge(width = 0.85), fontface = 2) +
-  theme(legend.position.inside = c(0.04, 0.9))
+  theme(legend.position.inside = c(0.38, 0.1),
+        legend.direction = "horizontal")
 
 ggsave(paste0(here::here(), "/results/figures/sims_beta_sigma.pdf"), width = 20, height = 13, unit = "cm")
 ```
@@ -708,10 +713,12 @@ Plot how well the models can retrieve the true depth coefficients (and kappa) wi
 true <- tibble(value = as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
                par = c("beta[j1]"))
 
+# FIXME: perhaps I wanted to swap so top row is " ... diffusion" and bottom row is kappa, but then I need to manually set the factor 
+# levels in the fact, which messes up tag_facet... 
 pars_df_kappa2 <- pars_df_kappa |> filter(par == "beta[j1]" & ln_sigma_eta == 0.25) |> 
-  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0.5, "log(\u03BA) = 0.5", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 1.5, "log(\u03BA) = 1.5", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 3, "log(\u03BA) = 3", ln_kappa2))
+  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0.5, "log(\u03BA) = 0.5\nHigh diffusion", ln_kappa2),
+         ln_kappa2 = ifelse(ln_kappa2 == 1.5, "log(\u03BA) = 1.5\nMedium diffusion", ln_kappa2),
+         ln_kappa2 = ifelse(ln_kappa2 == 3, "log(\u03BA) = 3\nLow diffusion", ln_kappa2))
 
 # Add in the AIC confusion scores
 aic_df_kappa_sum <- aic_df_kappa |> 
@@ -719,10 +726,10 @@ aic_df_kappa_sum <- aic_df_kappa |>
   filter(ln_sigma_eta == median(as.numeric(ln_sigma_eta))) |> 
   summarise(count = sum(aic),
             .by = c(`Estimation model`, ln_kappa2)) |> 
-  mutate(count_prop = count / n_sim) |> 
-  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0.5, "log(\u03BA) = 0.5", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 1.5, "log(\u03BA) = 1.5", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 3, "log(\u03BA) = 3", ln_kappa2)) |> 
+  mutate(count_prop = round(count / n_sim, digits = 2)) |> 
+  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0.5, "log(\u03BA) = 0.5\nHigh diffusion", ln_kappa2),
+         ln_kappa2 = ifelse(ln_kappa2 == 1.5, "log(\u03BA) = 1.5\nMedium diffusion", ln_kappa2),
+         ln_kappa2 = ifelse(ln_kappa2 == 3, "log(\u03BA) = 3\nLow diffusion", ln_kappa2)) |> 
   left_join(pars_df_kappa2 |> 
               summarise(est = max(est) + 0.2, .by = c(`Estimation model`, ln_kappa2)))
 
