@@ -1,7 +1,6 @@
 *.o
 *.dll
 *.so
-results/*identity_LNP/
 .Rproj.user
 
 
