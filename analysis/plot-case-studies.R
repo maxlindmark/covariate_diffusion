@@ -29,7 +29,7 @@ bb <- read.csv(paste0(root_dir, "/results/2024-08-07_LNP/Results_bb_cz.csv")) |>
   mutate(abb_name = substring(family, 1, 1),
          abb_name = paste0("<i>", paste(paste0(abb_name, "."), species), "</i>"))
 
-dd <- bind_rows(ebs |> mutate(case = "Eastern ebs sea fishes"),
+dd <- bind_rows(ebs |> mutate(case = "Eastern Bering sea fishes"),
                 bb |> mutate(case = "Breeding bird survey"))
 
 rect <- data.frame()
