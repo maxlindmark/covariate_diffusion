@@ -78,6 +78,12 @@ for( cI in seq_along(species_set) ){
                    checkParameterOrder = TRUE )
   Obj$env$beSilent()
 
+  if( species %in% c("lhdab", "a_yfs", "j_berfl") ){
+
+    Obj$par["ln_kappa2"] <- 3
+
+  }
+
   # Optimize
   Opt = nlminb( start = Obj$par,
                 obj = Obj$fn,
