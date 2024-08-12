@@ -41,7 +41,7 @@ ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_corr)) 
   geom_vline(xintercept = 0, alpha = 0.3, linetype = 1, linewidth = 0.35) +
   geom_point(shape = 21, color = "grey10", stroke = 0.01, size = 2.3) +
   labs(x = "ΔAIC", y = "Species", fill = "Correlation between raw and diffused covariate") +
-  scale_x_continuous(trans = "fourth_root_power") +
+  scale_x_continuous(trans = "fourth_root_power", breaks = c(-2, 0, 2, 25, 50, 75, 125)) +
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
   facet_wrap(~case, scales = "free", ncol = 2) +
   theme(axis.text.y = element_markdown(),
