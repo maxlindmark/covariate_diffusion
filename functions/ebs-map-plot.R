@@ -21,8 +21,6 @@ map_plot_ebs <- ggplot(alaska) +
   labs(x = "Longitude", y = "Latitude")
 
 mp_ebs_s <- map_plot_ebs +
-  annotate("text", label = "USA", x = -160, y = 62, color = "gray50", size = 2.8) +
-  annotate("text", label = "Bering\nSea", x = -176, y = 65, color = "gray50", size = 2.8) +
   guides(fill = guide_colorbar(position = "inside", title.position = "top", title.hjust = 0.5),
          color = "none") +
   theme(legend.key.width = unit(0.3, "cm"),

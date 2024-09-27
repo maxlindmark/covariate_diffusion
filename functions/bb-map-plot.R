@@ -21,15 +21,13 @@ map_plot_bb <- ggplot(pnw) +
   labs(x = "Longitude", y = "Latitude")
 
 mp_bb_s <- map_plot_bb +
-  annotate("text", label = "Canada", x = -113, y = 49.9, color = "gray50", size = 2.8) +
-  annotate("text", label = "Mexico", x = -110, y = 30.5, color = "gray50", size = 2.8) +
-  annotate("text", label = "Pacific\nOcean", x = -123.4, y = 34.7, color = "gray50", size = 2.8) +
   guides(fill = guide_colorbar(position = "inside", title.position = "top", title.hjust = 0.5)) +
   theme(legend.key.width = unit(0.3, "cm"),
         legend.key.height = unit(0.2, "cm"),
         legend.direction = "horizontal",
+        legend.key.spacing = unit(0, "mm"),
         strip.text = element_markdown(),
-        legend.position.inside = c(0.16, 0.03)) +
+        legend.position.inside = c(0.16, 0.019)) +
   facet_wrap(~abb_name, ncol = 1) +
   scale_fill_viridis(option = "mako") +
   NULL
