@@ -28,14 +28,19 @@ Results_cz = array( NA,
 # Store output for plotting
 stuff_gz_list <- list()
 
+# For scaling and scaling back covariate
+mean_depth_s <- mean(depth_s)
+sd_depth_s <- sd(depth_s)
+
 # Loop
-cI = match( "a_yfs", species_set )
+#cI = match( "a_yfs", species_set )
+#cI = match( c("a_poll", "cap"), species_set )
 for( cI in seq_along(species_set) ){
   species = species_set[cI]
 
   # Build object
   if(f_depth=="identity"){
-    depthprime_s = (depth_s / 100)
+    depthprime_s = (depth_s - mean_depth_s) / sd_depth_s #(depth_s / 100)
   }else if(f_depth=="log"){
     depthprime_s = log(depth_s) - 4.5
   }
@@ -80,7 +85,7 @@ for( cI in seq_along(species_set) ){
 
   if( species %in% c("lhdab", "a_yfs", "j_berfl") ){
 
-    Obj$par["ln_kappa2"] <- 3
+    Obj$par["ln_kappa2"] <- 4
 
   }
 
@@ -143,7 +148,13 @@ for( cI in seq_along(species_set) ){
     }
   dev.off()
 
-  stuff_gz_list[[cI]] <- stuff_gz |> dplyr::mutate(species = species_set[cI])
+  stuff_gz_list[[cI]] <- stuff_gz |>
+    dplyr::mutate(species = species_set[cI]
+                  # TODO: scale back covariate for plotting? How about the diffused covariate?
+                  #,
+                  #orig = (orig * sd_depth_s) + mean_depth_s,
+                  #diffused = (diffused * sd_depth_s) + mean_depth_s
+                  )
 }
 
 stuff_gz_df <- dplyr::bind_rows(stuff_gz_list)
