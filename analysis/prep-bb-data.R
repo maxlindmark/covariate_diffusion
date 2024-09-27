@@ -13,6 +13,7 @@ library(fmesher)
 library(tidyterra) # to make pop_dens a spatraster so that I can extract values at mesh nodes
 library(tidyr)
 library(Matrix)
+library(ggsidekick)
 
 
 root_dir <- here::here(".")
@@ -82,7 +83,15 @@ loc_grid = st_coordinates(st_centroid(sf_grid))
 mesh = fm_mesh_2d( loc_grid, refine=TRUE, cutoff=1)
 # Create matrices in INLA
 spde <- fm_fem(mesh, order=2)
-#plot(mesh)
+plot(mesh)
+mesh$n
+
+ggplot() +
+  geom_fm(data = mesh, fill = NA) +
+  theme_sleek() +
+  labs(x = "Longitude", y = "Latitude")
+
+ggsave(paste0(here::here(), "/results/figures/supporting/bb_mesh.pdf"), width = 15, height = 11, unit = "cm")
 
 # create projection matrix from vertices to samples
 A_is = fm_evaluator( mesh, loc=loc_DF )$proj$A

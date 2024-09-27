@@ -4,6 +4,7 @@ library(TMB)
 library(rnaturalearth)
 library(terra)
 library(fmesher)
+library(ggsidekick)
 
 region <- c("EBS", "GOA")[1]
 
@@ -41,6 +42,14 @@ sf_grid <- st_intersection(sf_grid, domain_shape)
 grid_loc <- st_coordinates(st_centroid(sf_grid))
 # plot(sf_grid)
 mesh <- fmesher::fm_mesh_2d(st_coordinates(sf_loc)[, 1:2], cutoff = 0.1)
+mesh$n
+
+ggplot() +
+  geom_fm(data = mesh, fill = NA) +
+  theme_sleek() +
+  labs(x = "Longitude", y = "Latitude")
+
+ggsave(paste0(here::here(), "/results/figures/supporting/ebs_mesh.pdf"), width = 15, height = 9, unit = "cm")
 
 # Other objects
 spde <- fm_fem(mesh)
