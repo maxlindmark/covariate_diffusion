@@ -572,9 +572,7 @@ ggsave(paste0(here::here(), "/results/figures/supporting/test_corr_delta_aic_2.p
 
 
 
-# Capelin test!
-
-# Plotting correlations between omega
+# Plot partial effects
 diff_sp <- ebs_stuff |>
   dplyr::filter(species %in% test_sp$abb_name) |>
   dplyr::filter(!species == "a_yil") |>
