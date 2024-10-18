@@ -6,7 +6,7 @@ library(Matrix)
 library(sf)
 
 #
-loc = matrix( rnorm(50), ncol=2 )
+loc = matrix( runif(1000), ncol=2 )
 mesh = fm_mesh_2d( loc )
 spde = fm_fem( mesh )
 invM0 = spde$c0
@@ -14,13 +14,14 @@ diag(invM0) = 1/diag(spde$c0)
 
 #
 sf_mesh = st_union(fm_as_sfc(mesh))
-sf_grid = st_make_grid( sf_mesh, n=20 )
+sf_grid = st_make_grid( sf_mesh, n=100 )
 sf_grid = st_intersection( sf_grid, sf_mesh )
 A_gs = fm_evaluator( mesh, loc=st_coordinates(st_centroid(sf_grid)) )$proj$A
 
 #
-ln_kappa = log(pi)
-ln_tau = log(0.4)
+ln_kappa = log(1)
+#ln_tau = log(0.4)
+ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
 #Q = exp(ln_tau*2) * (exp(ln_kappa*4) * spde$c0 + 2 * exp(ln_kappa*2) * spde$g1 + spde$g2)
 
 #
@@ -42,22 +43,22 @@ f(exp(ln_kappa),exp(ln_tau))
 
 # colSums( A_gs * x ) should equal colSums( A_gs * D * x )
 # Check with midpoint of domain
-which_mid = which.min( rowSums(mesh$loc^2) )
+which_mid = which.min( rowSums(scale(mesh$loc[,1:2])^2) )
 vec1 = rep(0,mesh$n)
 vec1[which_mid] = 1
 # Cmopare the two
 colSums(A_gs %*% vec1)
-colSums(A_gs %*% solve(invD,vec1) ) / f(exp(ln_kappa),exp(ln_tau))
+colSums(A_gs %*% solve(invD,vec1) ) # / f(exp(ln_kappa),exp(ln_tau))
 
 # plot diffusion from a specified point
 v1_s = rep(0,mesh$n)
-v1_s[9] = 1
+v1_s[which_mid] = 1
 v2_s = solve(invD, v1_s) #, system="A") # == vec2b = D %*% vec1
 # plotting code
 stuff = st_sf( sf_grid,
                "orig"=as.numeric(A_gs%*%v1_s),
-               "proj"=log(as.numeric(A_gs%*%v2_s)) )   # , log(as.numeric(vec2b)))
-plot( stuff, cex=2, pch=19 )
+               "proj"=as.numeric(A_gs%*%v2_s) )   # , log(as.numeric(vec2b)))
+plot( stuff, cex=2, pch=19, border=NA )
 sum( A_gs %*% v1_s )
 sum( A_gs %*% v2_s )
 
