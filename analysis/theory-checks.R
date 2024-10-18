@@ -37,30 +37,23 @@ D = solve(invD)
 f = function(kappa, tau) 1 / (1 + kappa^2) / tau
 D = solve(invD)
 
-# rowSums should be constant ->  Product D * 1 should be 1 / (1 + exp(2*ln_kappa)) / exp(ln_tau)
-solve(invD, rep(1,mesh$n))
-f(exp(ln_kappa),exp(ln_tau))
-
 # colSums( A_gs * x ) should equal colSums( A_gs * D * x )
 # Check with midpoint of domain
 which_mid = which.min( rowSums(scale(mesh$loc[,1:2])^2) )
 vec1 = rep(0,mesh$n)
 vec1[which_mid] = 1
 # Cmopare the two
-colSums(A_gs %*% vec1)
-colSums(A_gs %*% solve(invD,vec1) ) # / f(exp(ln_kappa),exp(ln_tau))
+t(rep(1,length(sf_grid))) %*% A_gs %*% vec1
+t(rep(1,length(sf_grid))) %*% A_gs %*% solve(invD,vec1)
 
 # plot diffusion from a specified point
-v1_s = rep(0,mesh$n)
-v1_s[which_mid] = 1
-v2_s = solve(invD, v1_s) #, system="A") # == vec2b = D %*% vec1
 # plotting code
 stuff = st_sf( sf_grid,
-               "orig"=as.numeric(A_gs%*%v1_s),
-               "proj"=as.numeric(A_gs%*%v2_s) )   # , log(as.numeric(vec2b)))
+               "orig"=as.numeric(A_gs%*%vec1),
+               "proj"=as.numeric(A_gs%*%solve(invD,vec1)) )   # , log(as.numeric(vec2b)))
 plot( stuff, cex=2, pch=19, border=NA )
-sum( A_gs %*% v1_s )
-sum( A_gs %*% v2_s )
+sum( stuff$orig )
+sum( stuff$proj )
 
 ###################
 #
