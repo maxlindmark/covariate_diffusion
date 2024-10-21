@@ -3,10 +3,13 @@
 
 library(fmesher)
 library(Matrix)
+library(pracma)
 library(sf)
 
 #
-loc = matrix( runif(1000), ncol=2 )
+#loc = matrix( runif(1000), ncol=2 )
+#loc = as.matrix( expand.grid(seq(0,1,len=20),seq(0,1,len=20)) )
+loc = poisson2disk(n=1000)
 mesh = fm_mesh_2d( loc )
 spde = fm_fem( mesh )
 invM0 = spde$c0
@@ -19,7 +22,7 @@ sf_grid = st_intersection( sf_grid, sf_mesh )
 A_gs = fm_evaluator( mesh, loc=st_coordinates(st_centroid(sf_grid)) )$proj$A
 
 #
-ln_kappa = log(1)
+ln_kappa = log(10)
 #ln_tau = log(0.4)
 ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
 #Q = exp(ln_tau*2) * (exp(ln_kappa*4) * spde$c0 + 2 * exp(ln_kappa*2) * spde$g1 + spde$g2)
@@ -54,6 +57,22 @@ stuff = st_sf( sf_grid,
 plot( stuff, cex=2, pch=19, border=NA )
 sum( stuff$orig )
 sum( stuff$proj )
+
+# Using IID normal deviates
+vec1 = rnorm(mesh$n)
+# Cmopare the two
+t(rep(1,length(sf_grid))) %*% A_gs %*% vec1
+t(rep(1,length(sf_grid))) %*% A_gs %*% solve(invD,vec1)
+
+# plot diffusion from a specified point
+# plotting code
+stuff = st_sf( sf_grid,
+               "orig"=as.numeric(A_gs%*%vec1),
+               "proj"=as.numeric(A_gs%*%solve(invD,vec1)) )   # , log(as.numeric(vec2b)))
+plot( stuff, cex=2, pch=19, border=NA )
+sum( stuff$orig )
+sum( stuff$proj )
+
 
 ###################
 #
