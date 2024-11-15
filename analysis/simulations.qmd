@@ -31,7 +31,8 @@ library(ggstats)
 library(ggdist)
 library(ggplot2)
 library(egg)
-library(ggsidekick); theme_set(theme_sleek())
+library(ggsidekick)
+theme_set(theme_sleek())
 ```
 
 
@@ -62,16 +63,14 @@ species_set <- colnames(region_data_all)[30:ncol(region_data_all)]
 N_c <- colSums(ifelse(region_data_all[, species_set] > 0, 1, 0))
 species_set <- species_set[N_c > 1000]
 
-param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_depth")
-
 cI <- match("j_pcod", species_set)
 species <- species_set[cI]
 
 f_depth
 if (f_depth == "identity") {
-  #depthprime_s <- (depth_s / 100)
+  # depthprime_s <- (depth_s / 100)
   depthprime_s <- (depth_s - mean(depth_s)) / sd(depth_s)
-  #depthprime_s <- (log(depth_s) - mean(log(depth_s))) / sd(log(depth_s)) # ML: Can we better estimate depth and depth sq if we square?
+  # depthprime_s <- (log(depth_s) - mean(log(depth_s))) / sd(log(depth_s)) # ML: Can we better estimate depth and depth sq if we square?
 } else if (f_depth == "log") {
   depthprime_s <- log(depth_s) - 4.5
 }
@@ -82,7 +81,7 @@ if (f_depth == "identity") {
 
 Params <- list(
   "beta0" = 0,
-  #"beta_j" = c(0.1, 0.1),
+  # "beta_j" = c(0.1, 0.1),
   "beta_j" = 0.1,
   "ln_tau" = 0,
   "ln_kappa" = 0,
@@ -93,7 +92,7 @@ Params <- list(
 Random <- "omega_s"
 
 # Special stuff
-#if (Data$dist == "LNP") {
+# if (Data$dist == "LNP") {
 Params$ln_sigma_eta <- log(0.1)
 Params$eta_i <- rnorm(nrow(region_data_all))
 Random <- c(Random, "eta_i")
@@ -160,7 +159,7 @@ Data_sim_null <- list(
 
 Obj_sim_null <- MakeADFun(
   data = Data_sim_null,
-  parameters =  Params[setdiff(names(Params), c("ln_tau2","ln_kappa2"))],
+  parameters = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))],
   # profile = c("beta0","beta_j"),    # ,"ln_kappa2"
   random = Random,
   checkParameterOrder = TRUE,
@@ -187,9 +186,11 @@ First set some parameters based on the fits above
 # Diffusion operating model
 p_sim_diff <- Obj_sim_diff$env$last.par.best
 
-p_sim_diff[names(p_sim_diff) %in% c("beta0", "beta_j", "ln_sigma_eta",
-                                    "ln_tau", "ln_kappa", "ln_kappa2")] 
-  
+p_sim_diff[names(p_sim_diff) %in% c(
+  "beta0", "beta_j", "ln_sigma_eta",
+  "ln_tau", "ln_kappa", "ln_kappa2"
+)]
+
 # Replace fitted parameters with fake, more rounded values
 p_sim_diff[names(p_sim_diff) == "beta0"] <- -0.4
 p_sim_diff[names(p_sim_diff) == "beta_j"] <- -2.4
@@ -219,9 +220,11 @@ p_sim_diff5[names(p_sim_diff5) == "ln_kappa2"] <- 5
 # Null operating model
 p_sim_null <- Obj_sim_null$env$last.par.best
 
-p_sim_null[names(p_sim_null) %in% c("beta0", "beta_j", "ln_sigma_eta",
-                                    "ln_tau", "ln_kappa", "ln_kappa2")] 
-  
+p_sim_null[names(p_sim_null) %in% c(
+  "beta0", "beta_j", "ln_sigma_eta",
+  "ln_tau", "ln_kappa", "ln_kappa2"
+)]
+
 # Replace fitted parameters with fake, more rounded values
 p_sim_null[names(p_sim_null) == "beta0"] <- -0.4
 p_sim_null[names(p_sim_null) == "beta_j"] <- -2.4
@@ -248,34 +251,33 @@ n_sim <- 200
 
 sim_dat <- function(obj = obj, par = par, operating_model = NA,
                     ln_sigma_eta = NA, ln_kappa_2 = NA, iter = NA) {
-  
-  if( length(p_sim_null3[names(par) == "ln_kappa2"]) > 0 ) {
-    
+  if (length(p_sim_null3[names(par) == "ln_kappa2"]) > 0) {
     ln_kappa2 <- as.numeric(par[names(par) == "ln_kappa2"])
-    
-  } else{ ln_kappa2 = NA }
-  
-  tibble(c_i = obj$simulate(par = par, complete = FALSE)$c_i) |> 
-    mutate(ln_sigma_eta = as.numeric(par[names(par) == "ln_sigma_eta"]),
-           ln_kappa2 = ln_kappa2,
-           iter = iter, 
-           operating_model = operating_model) 
-  
+  } else {
+    ln_kappa2 <- NA
+  }
+
+  tibble(c_i = obj$simulate(par = par, complete = FALSE)$c_i) |>
+    mutate(
+      ln_sigma_eta = as.numeric(par[names(par) == "ln_sigma_eta"]),
+      ln_kappa2 = ln_kappa2,
+      iter = iter,
+      operating_model = operating_model
+    )
 }
 
 sim_dat_list <- list()
 
-for(i in 1:n_sim) {
-
+for (i in 1:n_sim) {
   # Operating model = diffusion
   sim_1_diff <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff, operating_model = "diffusion", iter = i)
   sim_01_diff <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff2, operating_model = "diffusion", iter = i)
   sim_2_diff <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff3, operating_model = "diffusion", iter = i)
-  
+
   # In the operating model = diffusion, we also simulate with ln_kappa_2, the smoothness of the diffusion for ln_sigma_eta = 0.25
-  sim_1_diff_kappa2_neg2  <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff4, operating_model = "diffusion", iter = i)
-  sim_1_diff_kappa2_6 <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff5, operating_model = "diffusion",iter = i)
-  
+  sim_1_diff_kappa2_neg2 <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff4, operating_model = "diffusion", iter = i)
+  sim_1_diff_kappa2_6 <- sim_dat(obj = Obj_sim_diff, par = p_sim_diff5, operating_model = "diffusion", iter = i)
+
   # Operating model = null
   sim_1_null <- sim_dat(obj = Obj_sim_null, par = p_sim_null, operating_model = "null", iter = i)
   sim_01_null <- sim_dat(obj = Obj_sim_null, par = p_sim_null2, operating_model = "null", iter = i)
@@ -285,9 +287,8 @@ for(i in 1:n_sim) {
     sim_1_diff, sim_01_diff, sim_2_diff,
     sim_1_diff_kappa2_neg2, sim_1_diff_kappa2_6,
     sim_1_null, sim_01_null, sim_2_null
-    ) |> 
+  ) |>
     mutate(index = paste(iter, ln_sigma_eta, sep = ","))
-
 }
 
 sim_df <- bind_rows(sim_dat_list)
@@ -314,12 +315,11 @@ aic_list_null_om <- list()
 # In this loop, we want to keep ln_kappa2 as NA (null operating model) AND ln_kappa2 = median,
 # because we simulated more data for the diffusion operating model since we also varied ln_kappa2
 sim_df_main <- sim_df |>
-  mutate(keep = replace_na(ln_kappa2, median(ln_kappa2, na.rm = TRUE))) |> 
+  mutate(keep = replace_na(ln_kappa2, median(ln_kappa2, na.rm = TRUE))) |>
   filter(keep == median(ln_kappa2, na.rm = TRUE))
 
 # Loop through all n data sets
-for(i in unique(sim_df_main$index)) {
-
+for (i in unique(sim_df_main$index)) {
   # Operating model = diffusion
   Data_sim_diff_i <- Data_sim_diff
 
@@ -336,27 +336,30 @@ for(i in unique(sim_df_main$index)) {
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
+  )
 
   Opt_diff <- nlminb(
     start = Obj_diff$par,
     obj = Obj_diff$fn,
     grad = Obj_diff$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
+  )
 
   pars_diff_list_sim_diff[[i]] <-
-    tibble(par = c("beta[j1]"),
-           est = Opt_diff$par[names(Opt_diff$par) %in% pars]) |>
-    mutate(index = i,
-           `Estimation model` = "Diffusion",
-           `Operating model` = "Operating model = Diffusion"
-           )
+    tibble(
+      par = c("beta[j1]"),
+      est = Opt_diff$par[names(Opt_diff$par) %in% pars]
+    ) |>
+    mutate(
+      index = i,
+      `Estimation model` = "Diffusion",
+      `Operating model` = "Operating model = Diffusion"
+    )
 
 
   # EM: Null
   Data_sim_diff_i$method <- "null"
-  Params_null = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
+  Params_null <- Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
 
   Obj_null <- MakeADFun(
     data = Data_sim_diff_i,
@@ -364,34 +367,41 @@ for(i in unique(sim_df_main$index)) {
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
+  )
 
   Opt_null <- nlminb(
     start = Obj_null$par,
     obj = Obj_null$fn,
     grad = Obj_null$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
+  )
 
   pars_null_list_sim_diff[[i]] <-
-    tibble(par = c("beta[j1]"),
-           est = Opt_null$par[names(Opt_null$par) %in% pars]) |>
-    mutate(index = i,
-           `Estimation model` = "Null",
-           `Operating model` = "Operating model = Diffusion")
+    tibble(
+      par = c("beta[j1]"),
+      est = Opt_null$par[names(Opt_null$par) %in% pars]
+    ) |>
+    mutate(
+      index = i,
+      `Estimation model` = "Null",
+      `Operating model` = "Operating model = Diffusion"
+    )
 
   # Delta AIC for the two EMs and Diffusion OM
   # if null is larger than diff, diff is favoured, and aic is [1, 0], else its [0, 1]
-  if( (2*Opt_null$objective+2*length(Opt_null$par)) -
-      (2*Opt_diff$objective+2*length(Opt_diff$par)) > 0 ){
-    aic = c(1, 0)
-  } else{aic = c(0, 1)}
+  if ((2 * Opt_null$objective + 2 * length(Opt_null$par)) -
+    (2 * Opt_diff$objective + 2 * length(Opt_diff$par)) > 0) {
+    aic <- c(1, 0)
+  } else {
+    aic <- c(0, 1)
+  }
 
   aic_list_diff_om[[i]] <-
-    tibble(`Operating model` = "Diffusion",
-           `Estimation model` = c("Diffusion", "Null"),
-           aic = aic
-           ) |>
+    tibble(
+      `Operating model` = "Diffusion",
+      `Estimation model` = c("Diffusion", "Null"),
+      aic = aic
+    ) |>
     mutate(index = i)
 
 
@@ -414,27 +424,30 @@ for(i in unique(sim_df_main$index)) {
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
+  )
 
   Opt_diff <- nlminb(
     start = Obj_diff$par,
     obj = Obj_diff$fn,
     grad = Obj_diff$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
+  )
 
   pars_diff_list_sim_null[[i]] <-
-    tibble(par = c("beta[j1]"),
-           est = Opt_diff$par[names(Opt_diff$par) %in% pars]) |>
-    mutate(index = i,
-           `Estimation model` = "Diffusion",
-           `Operating model` = "Operating model = Null"
-           )
+    tibble(
+      par = c("beta[j1]"),
+      est = Opt_diff$par[names(Opt_diff$par) %in% pars]
+    ) |>
+    mutate(
+      index = i,
+      `Estimation model` = "Diffusion",
+      `Operating model` = "Operating model = Null"
+    )
 
 
   # EM: null
   Data_sim_null_i$method <- "null"
-  Params_null = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
+  Params_null <- Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
 
   Obj_null <- MakeADFun(
     data = Data_sim_null_i,
@@ -442,42 +455,48 @@ for(i in unique(sim_df_main$index)) {
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
+  )
 
   Opt_null <- nlminb(
     start = Obj_null$par,
     obj = Obj_null$fn,
     grad = Obj_null$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
+  )
 
   pars_null_list_sim_null[[i]] <-
-    tibble(par = c("beta[j1]"),
-           est = Opt_null$par[names(Opt_null$par) %in% pars]) |>
-    mutate(index = i,
-           `Estimation model` = "Null",
-           `Operating model` = "Operating model = Null")
+    tibble(
+      par = c("beta[j1]"),
+      est = Opt_null$par[names(Opt_null$par) %in% pars]
+    ) |>
+    mutate(
+      index = i,
+      `Estimation model` = "Null",
+      `Operating model` = "Operating model = Null"
+    )
 
   # Delta AIC for the two EMs and null OM
-  if( (2*Opt_null$objective+2*length(Opt_null$par)) -
-      (2*Opt_diff$objective+2*length(Opt_diff$par)) > 0 ){
-    aic = c(1, 0)
-  } else{aic = c(0, 1)}
+  if ((2 * Opt_null$objective + 2 * length(Opt_null$par)) -
+    (2 * Opt_diff$objective + 2 * length(Opt_diff$par)) > 0) {
+    aic <- c(1, 0)
+  } else {
+    aic <- c(0, 1)
+  }
 
   aic_list_null_om[[i]] <-
-    tibble(`Operating model` = "Null",
-           `Estimation model` = c("Diffusion", "Null"),
-           aic = aic
-           ) |>
+    tibble(
+      `Operating model` = "Null",
+      `Estimation model` = c("Diffusion", "Null"),
+      aic = aic
+    ) |>
     mutate(index = i)
-
 }
 ```
 
 ```{r fit to simulated data vary ln_kappa2}
 #| results: hide
 
-# This only uses the diffusion OM 
+# This only uses the diffusion OM
 # I track beta and kappa2
 # I do not do the AIC confusion matrix since we don't look at accuracy of finding the right model, just parameter estimation
 pars <- c("beta_j", "ln_kappa2")
@@ -488,87 +507,95 @@ pars_null_list_sim_diff_kappa <- list()
 aic_list_diff <- list()
 
 # In this loop, we want to keep ln_kappa2 as NA (null operating model) and ln_kappa2 = midpoint, because we simulated more data for the diffusion operating model since we also varied ln_kappa2
-sim_df_kappa <- sim_df |> 
+sim_df_kappa <- sim_df |>
   drop_na(ln_kappa2) |> # this removes the simulations using the null OM
   mutate(index_k = paste(index, ln_kappa2, sep = ","))
 
-# Loop through all n data sets 
-for(i in unique(sim_df_kappa$index_k)) {
-  
+# Loop through all n data sets
+for (i in unique(sim_df_kappa$index_k)) {
   # Operating model = diffusion
   Data_sim_diff_i <- Data_sim_diff
-  
+
   Data_sim_diff_i$c_i <- sim_df_kappa |>
-    filter(index_k == i & operating_model == "diffusion") |> 
+    filter(index_k == i & operating_model == "diffusion") |>
     pull(c_i)
 
   # EM: Diffusion
   Data_sim_diff_i$method <- "diffusion"
-  
+
   Obj_diff <- MakeADFun(
     data = Data_sim_diff_i,
     parameters = Params,
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
-  
+  )
+
   Opt_diff <- nlminb(
     start = Obj_diff$par,
     obj = Obj_diff$fn,
     grad = Obj_diff$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
-  
-  pars_diff_list_sim_diff_kappa[[i]] <- 
-    tibble(par = c("beta[j1]", "ln_kappa2"),
-           est = Opt_diff$par[names(Opt_diff$par) %in% pars]) |>
-    mutate(index = i, 
-           `Estimation model` = "Diffusion",
-           `Operating model` = "Operating model = Diffusion"
-           )
+  )
 
-  
+  pars_diff_list_sim_diff_kappa[[i]] <-
+    tibble(
+      par = c("beta[j1]", "ln_kappa2"),
+      est = Opt_diff$par[names(Opt_diff$par) %in% pars]
+    ) |>
+    mutate(
+      index = i,
+      `Estimation model` = "Diffusion",
+      `Operating model` = "Operating model = Diffusion"
+    )
+
+
   # EM: Null
   Data_sim_diff_i$method <- "null"
-  Params_null = Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
-  
+  Params_null <- Params[setdiff(names(Params), c("ln_tau2", "ln_kappa2"))]
+
   Obj_null <- MakeADFun(
     data = Data_sim_diff_i,
     parameters = Params_null,
     random = Random,
     checkParameterOrder = TRUE,
     DLL = "movement_kernel_sim"
-    )
-  
+  )
+
   Opt_null <- nlminb(
     start = Obj_null$par,
     obj = Obj_null$fn,
     grad = Obj_null$gr,
     control = list(eval.max = 1e4, iter.max = 1e4)
-    )
-  
+  )
+
   pars_null_list_sim_diff_kappa[[i]] <-
-    tibble(par = "beta[j1]",
-           est = Opt_null$par[names(Opt_null$par) == "beta_j"]) |> # Do not track ln_kappa2 for the Null EM
-    mutate(index = i, 
-           `Estimation model` = "Null",
-           `Operating model` = "Operating model = Diffusion")
-  
+    tibble(
+      par = "beta[j1]",
+      est = Opt_null$par[names(Opt_null$par) == "beta_j"]
+    ) |> # Do not track ln_kappa2 for the Null EM
+    mutate(
+      index = i,
+      `Estimation model` = "Null",
+      `Operating model` = "Operating model = Diffusion"
+    )
+
   # Delta AIC for the two EMs and Diffusion OM
   # if null is larger than diff, diff is favoured, and aic is [1, 0], else its [0, 1]
-  if( (2*Opt_null$objective+2*length(Opt_null$par)) -
-      (2*Opt_diff$objective+2*length(Opt_diff$par)) > 0 ){
-    aic = c(1, 0)
-  } else{aic = c(0, 1)}
-  
+  if ((2 * Opt_null$objective + 2 * length(Opt_null$par)) -
+    (2 * Opt_diff$objective + 2 * length(Opt_diff$par)) > 0) {
+    aic <- c(1, 0)
+  } else {
+    aic <- c(0, 1)
+  }
+
   aic_list_diff[[i]] <-
-    tibble(`Operating model` = "Diffusion",
-           `Estimation model` = c("Diffusion", "Null"),
-           aic = aic
-           ) |> 
+    tibble(
+      `Operating model` = "Diffusion",
+      `Estimation model` = c("Diffusion", "Null"),
+      aic = aic
+    ) |>
     mutate(index = i)
-    
 }
 ```
 
@@ -579,35 +606,35 @@ pars_df <- bind_rows(
   bind_rows(pars_null_list_sim_diff),
   bind_rows(pars_diff_list_sim_null),
   bind_rows(pars_null_list_sim_null)
-  ) |>
+) |>
   separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta"))
 
 write_csv(pars_df, paste0(here::here(), "/results/simulation/pars_df.csv"))
-#pars_df <- read_csv(paste0(here::here(), "/results/simulation/pars_df.csv"))
+# pars_df <- read_csv(paste0(here::here(), "/results/simulation/pars_df.csv"))
 
 pars_df_kappa <- bind_rows(
   bind_rows(pars_null_list_sim_diff_kappa),
   bind_rows(pars_diff_list_sim_diff_kappa)
-  ) |> 
+) |>
   separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta", "ln_kappa2"))
 
 write_csv(pars_df_kappa, paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
-#pars_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
+# pars_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/pars_df_kappa.csv"))
 
 aic_df <- bind_rows(
   bind_rows(aic_list_null_om),
   bind_rows(aic_list_diff_om)
-  )
+)
 
 write_csv(aic_df, paste0(here::here(), "/results/simulation/aic_df.csv"))
-#aic_df <- read_csv(paste0(here::here(), "/results/simulation/aic_df.csv"))
+# aic_df <- read_csv(paste0(here::here(), "/results/simulation/aic_df.csv"))
 
 aic_df_kappa <- bind_rows(
   bind_rows(aic_list_diff)
-  )
+)
 
 write_csv(aic_df_kappa, paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
-#aic_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
+# aic_df_kappa <- read_csv(paste0(here::here(), "/results/simulation/aic_df_kappa.csv"))
 ```
 
 AIC confusion matrix
@@ -615,9 +642,11 @@ AIC confusion matrix
 ```{r}
 aic_df |>
   separate(index, ",", into = c("index", "ln_sigma_eta")) |>
-  mutate(sigma_eta = round(exp(as.numeric(ln_sigma_eta))), digits = 2) |> 
-  summarise(count = sum(aic),
-            .by = c(`Operating model`, `Estimation model`, sigma_eta)) |>
+  mutate(sigma_eta = round(exp(as.numeric(ln_sigma_eta))), digits = 2) |>
+  summarise(
+    count = sum(aic),
+    .by = c(`Operating model`, `Estimation model`, sigma_eta)
+  ) |>
   ggplot(aes(`Operating model`, `Estimation model`, label = count)) +
   geom_text() +
   facet_wrap(~sigma_eta) +
@@ -629,13 +658,15 @@ ggsave(paste0(here::here(), "/results/simulation/confusion_table.pdf"), width = 
 How does AIC difference between the estimation models and diffusion operating model change with ln_kappa?
 
 ```{r}
-aic_df_kappa |> 
-  separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta", "ln_kappa2")) |> 
-  filter(ln_sigma_eta == median(as.numeric(ln_sigma_eta))) |> 
-  summarise(count = sum(aic),
-            .by = c(`Estimation model`, ln_kappa2)) |> 
+aic_df_kappa |>
+  separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta", "ln_kappa2")) |>
+  filter(ln_sigma_eta == median(as.numeric(ln_sigma_eta))) |>
+  summarise(
+    count = sum(aic),
+    .by = c(`Estimation model`, ln_kappa2)
+  ) |>
   ggplot(aes(ln_kappa2, `Estimation model`, label = count)) +
-  geom_text() + 
+  geom_text() +
   ggtitle("Operating model = Diffusion")
 
 ggsave(paste0(here::here(), "/results/simulation/confusion_table_kappa.pdf"), width = 11, height = 11, unit = "cm")
@@ -646,58 +677,81 @@ Plot how well the models can retrieve the true depth coefficients given variatio
 ```{r}
 #| fig-height: 7
 # True values (horizontal lines)
-true <- tibble(value = c(as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
-                         as.numeric(p_sim_null[names(p_sim_null) == "beta_j"])),
-               par = c("beta[j1]"),
-               `Operating model` = c("Operating model = Diffusion",
-                                     "Operating model = Null"),
-               )
+true <- tibble(
+  value = c(
+    as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
+    as.numeric(p_sim_null[names(p_sim_null) == "beta_j"])
+  ),
+  par = c("beta[j1]"),
+  `Operating model` = c(
+    "Operating model = Diffusion",
+    "Operating model = Null"
+  ),
+)
 
 pal <- colorRampPalette(brewer.pal(10, "BrBG"))(20)[c(13, 15, 18)]
 
 # Add in the AIC confusion scores
-aic_df_sum <- aic_df |> 
+aic_df_sum <- aic_df |>
   separate(index, ",", into = c("index", "ln_sigma_eta")) |>
-  summarise(count = sum(aic),
-            .by = c(`Operating model`, `Estimation model`, ln_sigma_eta)) |>
-  mutate(count_prop = count / n_sim) |> 
-  mutate(`Operating model` = ifelse(`Operating model` == "Diffusion", 
-                                     "Operating model = Diffusion", 
-                                     "Operating model = Null")) |> 
-  mutate(sigma_eta = 1, 
-         sigma_eta = ifelse(ln_sigma_eta == min(ln_sigma_eta), 0.1, sigma_eta),
-         sigma_eta = ifelse(ln_sigma_eta == max(ln_sigma_eta), 2, sigma_eta),
-         sigma_eta = as.character(sigma_eta)) |> 
-  left_join(pars_df |> 
-              mutate(ln_sigma_eta = as.character(ln_sigma_eta)) |> 
-              summarise(est = max(est) + 0.1, .by = c(`Estimation model`, `Operating model`, ln_sigma_eta)))
+  summarise(
+    count = sum(aic),
+    .by = c(`Operating model`, `Estimation model`, ln_sigma_eta)
+  ) |>
+  mutate(count_prop = count / n_sim) |>
+  mutate(`Operating model` = ifelse(`Operating model` == "Diffusion",
+    "Operating model = Diffusion",
+    "Operating model = Null"
+  )) |>
+  mutate(
+    sigma_eta = 1,
+    sigma_eta = ifelse(ln_sigma_eta == min(ln_sigma_eta), 0.1, sigma_eta),
+    sigma_eta = ifelse(ln_sigma_eta == max(ln_sigma_eta), 2, sigma_eta),
+    sigma_eta = as.character(sigma_eta)
+  ) |>
+  left_join(pars_df |>
+    mutate(ln_sigma_eta = as.character(ln_sigma_eta)) |>
+    summarise(est = max(est) + 0.1, .by = c(`Estimation model`, `Operating model`, ln_sigma_eta)))
 
-pars_df <- pars_df |> 
-  mutate(sigma_eta = 1, 
-         sigma_eta = ifelse(ln_sigma_eta == min(ln_sigma_eta), 0.1, sigma_eta),
-         sigma_eta = ifelse(ln_sigma_eta == max(ln_sigma_eta), 2, sigma_eta),
-         sigma_eta = as.character(sigma_eta))
+pars_df <- pars_df |>
+  mutate(
+    sigma_eta = 1,
+    sigma_eta = ifelse(ln_sigma_eta == min(ln_sigma_eta), 0.1, sigma_eta),
+    sigma_eta = ifelse(ln_sigma_eta == max(ln_sigma_eta), 2, sigma_eta),
+    sigma_eta = as.character(sigma_eta)
+  )
 
 p <- ggplot(pars_df, aes(`Estimation model`, est, fill = sigma_eta, color = sigma_eta)) +
-  geom_jitter(position = position_jitterdodge(dodge.width = 0.85, jitter.width = 0.1, jitter.height = 0),
-              alpha = 0.3, shape = 21, color = "white", size = 2) +
+  geom_jitter(
+    position = position_jitterdodge(dodge.width = 0.85, jitter.width = 0.1, jitter.height = 0),
+    alpha = 0.3, shape = 21, color = "white", size = 2
+  ) +
   stat_halfeye(alpha = 0.5, color = NA, position = position_dodge(width = 0.85)) +
   stat_pointinterval(position = position_dodge(width = 0.85), color = "grey20") +
   labs(y = "Estimated depth coefficient", x = "Estimation model") +
-  geom_hline(data = true, aes(yintercept = value),
-             alpha = 0.6, linetype = 2) +
+  geom_hline(
+    data = true, aes(yintercept = value),
+    alpha = 0.6, linetype = 2
+  ) +
   labs(fill = c(expression(paste("Observation error SD, ", sigma[eta])))) +
   facet_wrap(~`Operating model`, ncol = 2, scales = "free") +
   scale_color_manual(values = pal, name = "") +
   scale_fill_manual(values = pal) +
-  guides(color = "none",
-         fill = guide_legend(#position = "inside",
-                             title.position = "top", title.hjust = 0.5)) +
-  geom_text(data = aic_df_sum, aes(label = round(count_prop, digits = 2), color = ln_sigma_eta),
-            size = 3.5, position = position_dodge(width = 0.85), fontface = 2) +
-  theme(#legend.position.inside = c(0.75, 0.15),
-        legend.position = "bottom",
-        legend.direction = "horizontal")
+  guides(
+    color = "none",
+    fill = guide_legend( # position = "inside",
+      title.position = "top", title.hjust = 0.5
+    )
+  ) +
+  geom_text(
+    data = aic_df_sum, aes(label = round(count_prop, digits = 2), color = ln_sigma_eta),
+    size = 3.5, position = position_dodge(width = 0.85), fontface = 2
+  ) +
+  theme( # legend.position.inside = c(0.75, 0.15),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    strip.text.x.top = element_text(size = 10, margin = unit(rep(0.08, 4), "cm"))
+  )
 
 tag_facet(p, fontface = 1, size = 3.5)
 
@@ -708,32 +762,40 @@ Plot how well the models can retrieve the true depth coefficients (and kappa) wi
 
 ```{r}
 # True values (horizontal lines)
-true <- tibble(value = as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
-               par = c("beta[j1]"))
+true <- tibble(
+  value = as.numeric(p_sim_diff[names(p_sim_diff) == "beta_j"]),
+  par = c("beta[j1]")
+)
 
-# TODO: perhaps I wanted to swap so top row is " ... diffusion" and bottom row is kappa, but then I need to manually set the factor 
-# levels in the fact, which messes up tag_facet... 
+# TODO: perhaps I wanted to swap so top row is " ... diffusion" and bottom row is kappa, but then I need to manually set the factor
+# levels in the fact, which messes up tag_facet...
 
-#pars_df_kappa |> distinct(ln_kappa2, ln_sigma_eta)
+# pars_df_kappa |> distinct(ln_kappa2, ln_sigma_eta)
 
 pars_df_kappa2 <- pars_df_kappa |>
-  filter(par == "beta[j1]" & ln_sigma_eta == 0) |> 
-  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2))
+  filter(par == "beta[j1]" & ln_sigma_eta == 0) |>
+  mutate(
+    ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2)
+  )
 
 # Add in the AIC confusion scores
-aic_df_kappa_sum <- aic_df_kappa |> 
-  separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta", "ln_kappa2")) |> 
-  filter(ln_sigma_eta == 0) |> 
-  summarise(count = sum(aic),
-            .by = c(`Estimation model`, ln_kappa2)) |> 
-  mutate(count_prop = round(count / n_sim, digits = 2)) |> 
-  mutate(ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
-         ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2)) |> 
-  left_join(pars_df_kappa2 |> 
-              summarise(est = max(est) + 0.2, .by = c(`Estimation model`, ln_kappa2)))
+aic_df_kappa_sum <- aic_df_kappa |>
+  separate_wider_delim(index, delim = ",", names = c("iter", "ln_sigma_eta", "ln_kappa2")) |>
+  filter(ln_sigma_eta == 0) |>
+  summarise(
+    count = sum(aic),
+    .by = c(`Estimation model`, ln_kappa2)
+  ) |>
+  mutate(count_prop = round(count / n_sim, digits = 2)) |>
+  mutate(
+    ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2)
+  ) |>
+  left_join(pars_df_kappa2 |>
+    summarise(est = max(est) + 0.2, .by = c(`Estimation model`, ln_kappa2)))
 
 # Depth coefficients
 p <- ggplot(pars_df_kappa2, aes(`Estimation model`, est)) +
@@ -741,27 +803,32 @@ p <- ggplot(pars_df_kappa2, aes(`Estimation model`, est)) +
   stat_halfeye(alpha = 0.8, color = NA) +
   stat_pointinterval(color = "grey20") +
   labs(y = "Estimated depth coefficient", x = "Estimation model") +
-  geom_hline(data = true, aes(yintercept = value),
-             alpha = 0.6, linetype = 2) +
-  geom_text(data = aic_df_kappa_sum, aes(label = count_prop), size = 3.5, color = "grey30") + 
+  geom_hline(
+    data = true, aes(yintercept = value),
+    alpha = 0.6, linetype = 2
+  ) +
+  geom_text(data = aic_df_kappa_sum, aes(label = count_prop), size = 3.5, color = "grey30") +
   facet_wrap(~ln_kappa2, ncol = 3) +
   guides(color = "none", fill = guide_legend(position = "inside")) +
-  theme(legend.position.inside = c(0.07, 0.93))
+  theme(
+    legend.position.inside = c(0.07, 0.93),
+    strip.text.x.top = element_text(size = 10, margin = unit(rep(0.08, 4), "cm"))
+  )
 
 tag_facet(p, fontface = 1, size = 3.5)
 
 ggsave(paste0(here::here(), "/results/figures/sims_beta_kappa.pdf"),
-       width = 20, height = 11, unit = "cm", device = cairo_pdf)
+  width = 20, height = 11, unit = "cm", device = cairo_pdf
+)
 ```
 
 ```{r}
 # FIXME
 # How important is:
 
-#iter: 1  Error in iterate(par) : 
+# iter: 1  Error in iterate(par) :
 #   Newton dropout because inner gradient had non-finite components.
 # In addition: Warning message:
 # In nlminb(start = Obj_diff$par, obj = Obj_diff$fn, grad = Obj_diff$gr,  :
 #   NA/NaN function evaluation
 ```
-
