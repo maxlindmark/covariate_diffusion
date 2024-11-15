@@ -106,7 +106,8 @@ Type objective_function<Type>::operator() ()
 
   // Reporting
   REPORT(Q);
-  REPORT(omega_s);
+  //REPORT(omega_s);
+  REPORT(omega_g);
   REPORT(mu_i);
   REPORT(mu_g);
   REPORT(pdepth_i);
