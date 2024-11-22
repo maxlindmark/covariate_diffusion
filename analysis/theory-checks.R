@@ -9,7 +9,7 @@ library(sf)
 #
 #loc = matrix( runif(1000), ncol=2 )
 #loc = as.matrix( expand.grid(seq(0,1,len=20),seq(0,1,len=20)) )
-loc = poisson2disk(n=1000)
+loc = poisson2disk(n=10 )
 mesh = fm_mesh_2d( loc )
 spde = fm_fem( mesh )
 invM0 = spde$c0
@@ -22,7 +22,7 @@ sf_grid = st_intersection( sf_grid, sf_mesh )
 A_gs = fm_evaluator( mesh, loc=st_coordinates(st_centroid(sf_grid)) )$proj$A
 
 #
-ln_kappa = log(10)
+ln_kappa = log(5)
 #ln_tau = log(0.4)
 ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
 #Q = exp(ln_tau*2) * (exp(ln_kappa*4) * spde$c0 + 2 * exp(ln_kappa*2) * spde$g1 + spde$g2)
@@ -73,6 +73,24 @@ plot( stuff, cex=2, pch=19, border=NA )
 sum( stuff$orig )
 sum( stuff$proj )
 
+###################
+#
+# Other sanity checks
+#
+###################
+
+
+#
+ln_kappa = log(5)
+ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
+D = solve(exp(ln_tau) * invM0 %*% (spde$c0 + exp(2*ln_kappa)*spde$c0 + spde$g1))
+D2 = D %*% D
+
+#
+ln_kappa = log(5) - log(2)
+ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
+D2_b = solve(exp(ln_tau) * invM0 %*% (spde$c0 + exp(2*ln_kappa)*spde$c0 + spde$g1))
+
 
 ###################
 #
@@ -98,4 +116,35 @@ Y2 = sapply( X, FUN=\(x)f2(x,1) )
 # Compare the two
 matplot( x=X, y=cbind(1/Y,1/Y2) )
 
+
+################
+# Time-scaling
+################
+
+library(fmesher)
+library(Matrix)
+library(rbenchmark)
+
+run = function(n){
+  # Simulate locations
+  loc = matrix( rnorm(n*2), ncol=2 )
+  # Make SPDE objects
+  mesh = fm_mesh_2d( loc )
+  spde = fm_fem( mesh )
+  invM0 = spde$c0
+  diag(invM0) = 1/diag(spde$c0)
+  # Create inverse-D matrix
+  ln_kappa = log(5)
+  ln_tau = log( 1 / (1 + exp(2 * ln_kappa)) )
+  invD = exp(ln_tau) * invM0 %*% (spde$c0 + exp(2*ln_kappa)*spde$c0 + spde$g1)
+  x = rnorm(mesh$n)
+  # Do benchmark
+  out = benchmark( solve(invD,x), solve(invD) %*% x, columns=c("elapsed") )
+  return(out[,1])
+}
+
+size = ceiling(10 ^ seq(0,3,length=10))
+bench = sapply( size, FUN=run )
+
+matplot( x=size, y=t(bench), type="l", lty="solid" )
 
