@@ -5,6 +5,7 @@ library(rnaturalearth)
 library(terra)
 library(fmesher)
 library(ggsidekick)
+library(ggplot2)
 
 region <- c("EBS", "GOA")[1]
 
@@ -47,9 +48,10 @@ mesh$n
 ggplot() +
   geom_fm(data = mesh, fill = NA) +
   theme_sleek() +
-  labs(x = "Longitude", y = "Latitude")
+  labs(x = "Longitude", y = "Latitude") +
+  theme(aspect.ratio = 1)
 
-ggsave(paste0(here::here(), "/results/figures/supporting/ebs_mesh.pdf"), width = 15, height = 9, unit = "cm")
+ggsave(paste0(here::here(), "/results/figures/supporting/ebs_mesh.pdf"), width = 13, height = 13, unit = "cm")
 
 # Other objects
 spde <- fm_fem(mesh)
