@@ -137,7 +137,7 @@ pop_dens_s <- log(pop_dens_s)
 
 # Explore
 # sf_DF |>
-#   pivot_longer(4:23) |>
+#   pivot_longer(3:22) |>
 #   ggplot(aes(log_pop_dens, value)) +
 #   geom_smooth(alpha = 0.2) +
 #   facet_wrap(~name, scales = "free")
