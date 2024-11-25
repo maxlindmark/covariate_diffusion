@@ -143,7 +143,7 @@ run <- function(n) {
   f2 <- function() xx <- solve(invD) %*% x
   bench::mark(f1(), f2(), check = FALSE)
 }
-size <- c(10, 100, 200, 500, 1000, 2000)
+size <- c(10, 100, 200, 500, 1000, 2000, 3000)
 b <- lapply(size, run)
 times <- purrr::map_dfr(seq_along(b), \(i)
   data.frame(
