@@ -13,15 +13,18 @@ library(forcats)
 library(ggrepel)
 library(egg)
 
-root_dir <- here::here(".")
+
 
 ### Plot results from the case studies
 # Read data
+ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
+  dplyr::select(X, abb_name, sc_name, common_name2)
+
 ebs <- # read.csv(paste0(root_dir, "/results/2024-08-12_identity_LNP/Results_cz.csv")) |>
   read.csv(paste0(root_dir, "/results/2024-09-24_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
-  mutate(abb_name = X)
+  left_join(ebs_names, by = "X")
 
 # Breeding bird case
 bb <- read.csv(paste0(root_dir, "/results/2024-08-07_LNP/Results_bb_cz.csv")) |>
@@ -64,7 +67,7 @@ p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_co
 
 tag_facet(p, fontface = 1, size = 3.5, hjust = -12)
 
-ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, height = 16, unit = "cm", device = cairo_pdf)
+ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, height = 19, unit = "cm", device = cairo_pdf)
 
 
 # Plot maps from the case studies
@@ -161,10 +164,8 @@ ggsave(paste0(here::here(), "/results/figures/supporting/bb_diffused_original.pd
 source(file.path(root_dir, "functions/ebs-map-plot.R"))
 
 ebs_stuff <-
-  readRDS(paste0(here::here(), "/results/2024-09-24_identity_LNP/stuff_gz_df.rds")) #|>
-# separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
-# mutate(abb_name = substring(family, 1, 1),
-#        abb_name = paste0("<i>", paste(paste0(abb_name, "."), sp), "</i>"))
+  readRDS(paste0(here::here(), "/results/2024-09-24_identity_LNP/stuff_gz_df.rds")) |>
+  left_join(ebs_names, by = c("species" = "X"))
 
 sub <- ebs_stuff |> dplyr::filter(species %in% c("a_poll", "cap"))
 
@@ -213,7 +214,7 @@ p2a <- mp_ebs_s +
     x = -158, y = 53.8, color = "grey20", size = 2.8
   ) +
   labs(
-    tag = "(b) Diffused depth",
+    tag = "(b) Diffused depth\n",
     fill = NULL
   ) +
   scale_fill_viridis(option = "mako", na.value = NA, direction = -1) +
@@ -252,7 +253,7 @@ p3a <- mp_ebs_s +
     plot.tag = element_text(color = "grey30")
   ) +
   labs(
-    tag = "(c) log(predicted density)",
+    tag = "(c) log(predicted density)\n",
     fill = NULL
   ) +
   scale_fill_viridis(option = "magma", na.value = NA) +
@@ -282,78 +283,6 @@ p3 <- p3a / p3b
   theme(plot.tag = element_text(size = 11))
 
 ggsave(paste0(here::here(), "/results/figures/ebs_maps.pdf"), width = 20, height = 16, unit = "cm", device = cairo_pdf)
-
-
-# Supporting info plot
-sp <- unique(ebs_stuff$species)
-
-# ebs_stuff |>
-#   as_tibble() |>
-#   mutate(diff = diffused - orig) |>
-#   summarise(min = min(diff),
-#             max = max(diff),
-#             .by = species) |>
-#   arrange(min) |>
-#   as.data.frame()
-#
-# ggplot(ebs_stuff |> filter(species == "a_yil"), aes(diff)) +
-#   geom_histogram()
-
-# Trim some quantiles to make the plots clearer
-ebs_stuff <- ebs_stuff |>
-  mutate(diff = diffused - orig) |>
-  mutate(
-    diff_lwr = quantile(diff, probs = 0.01),
-    diff_upr = quantile(diff, probs = 0.99),
-    .by = species
-  ) |>
-  mutate(
-    diff = ifelse(diff < diff_lwr, diff_lwr, diff),
-    diff = ifelse(diff > diff_upr, diff_upr, diff)
-  )
-
-cors <- ebs |>
-  rename(species = X) |>
-  dplyr::select(covar_corr, species)
-
-mp_ebs_fc +
-  geom_sf(
-    data = ebs_stuff |> filter(species %in% sp[1:22]), aes(fill = diff),
-    color = NA
-  ) +
-  geom_text(
-    data = cors |>
-      filter(species %in% sp[1:22]),
-    color = "grey20",
-    aes(x = -Inf, y = -Inf, label = round(covar_corr, digits = 3)),
-    hjust = -0.1, vjust = -14, size = 3
-  ) +
-  facet_wrap(~species, ncol = 6) +
-  labs(fill = "Difference between diffused and original covariate") +
-  geom_sf(linewidth = 0.4, color = "gray40")
-
-ggsave(paste0(here::here(), "/results/figures/supporting/ebs_diffused_original_1.pdf"), width = 22, height = 23, unit = "cm")
-
-mp_ebs_fc +
-  geom_sf(
-    data = ebs_stuff |> filter(species %in% sp[23:length(sp)]), aes(fill = diff),
-    color = NA
-  ) +
-  geom_text(
-    data = cors |>
-      filter(species %in% sp[23:length(sp)]),
-    color = "grey20",
-    aes(x = -Inf, y = -Inf, label = round(covar_corr, digits = 3)),
-    hjust = -0.1, vjust = -14, size = 3
-  ) +
-  facet_wrap(~species, ncol = 6) +
-  labs(fill = "Difference between diffused and original covariate") +
-  geom_sf(linewidth = 0.4, color = "gray40")
-
-ggsave(paste0(here::here(), "/results/figures/supporting/ebs_diffused_original_2.pdf"), width = 22, height = 23, unit = "cm")
-
-# FIXME: In the EBS data, I think because the grid is so high-res, I see cell boundaries from geom_sf, even with color = null.
-# The only way to remove this is to set color also to a variable (the fill). I wonder if this distorts the pattern, because the line has a width...
 
 # Plotting correlations between omega
 king <- ebs_stuff |> dplyr::filter(species %in% c("rking"))
@@ -532,26 +461,28 @@ bb_cor <-
 
 ebs_cor <-
   readRDS(paste0(here::here(), "/results/2024-09-24_identity_LNP/stuff_gz_df.rds")) |>
+  left_join(ebs_names, by = c("species" = "X")) |>
   filter(species %in%
-    filter(ebs, `Diffusion\nfavoured` == "Y")$abb_name) |>
+    filter(ebs, `Diffusion\nfavoured` == "Y")$X) |>
   drop_na() |>
   as_tibble() |>
   summarise(
     cor_pred = cor(`log(dens) orig`, `log(dens) diffused`),
     cor_omega = cor(`omega diffused`, `omega orig`),
     cor_covar = cor(`diffused`, `orig`),
-    .by = species
+    .by = abb_name
   )
 
 cor <- bind_rows(
   ebs_cor |> mutate(case = "Fish"),
-  bb_cor |> mutate(case = "Bird") |> rename(species = abb_name)
-)
+  bb_cor |> mutate(case = "Bird")
+) |>
+  mutate(abb_name = str_remove_all(abb_name, "<i>|</i>"))
 
 p1 <- cor |>
-  ggplot(aes(cor_covar, cor_pred, label = species, shape = case)) +
+  ggplot(aes(cor_covar, cor_pred, label = abb_name, shape = case)) +
   geom_point() +
-  geom_text_repel(box.padding = 0.5) +
+  geom_text_repel(box.padding = 0.5, fontface = "italic") +
   theme(aspect.ratio = 1) +
   labs(
     x = "Correlation between\ncovariates",
@@ -562,9 +493,9 @@ p1 <- cor |>
   ylim(0.15, 1)
 
 p2 <- cor |>
-  ggplot(aes(cor_covar, cor_omega, label = species, color = cor_pred, shape = case)) +
+  ggplot(aes(cor_covar, cor_omega, label = abb_name, color = cor_pred, shape = case)) +
   geom_point() +
-  geom_text_repel(box.padding = 0.5) +
+  geom_text_repel(box.padding = 0.5, fontface = "italic") +
   theme(aspect.ratio = 1) +
   xlim(0.15, 1) +
   ylim(0.15, 1) +
@@ -601,138 +532,10 @@ ebs_stuff_test <- ebs_stuff |>
 ebs_stuff_test <- ebs_stuff_test |>
   left_join(test_df |> dplyr::select(abb_name, deltaAIC, covar_corr))
 
-mp_ebs_s +
-  geom_sf(
-    data = ebs_stuff_test |>
-      filter(abb_name %in% c("a_atf", "a_kam", "a_rex")) |>
-      rename(
-        Original = `orig`,
-        Diffused = `diffused`
-      ) |>
-      pivot_longer(c(Original, Diffused), names_to = "var"),
-    aes(fill = value, color = value), linewidth = 0.01
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Delta AIC=", round(deltaAIC, digits = 2))),
-    x = -174, y = 53.5, color = "grey20", size = 2.8
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Orig:Diff corr=", round(covar_corr, digits = 3))),
-    x = -172.5, y = 54.5, color = "grey20", size = 2.8
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("ln(kappa2)=", round(ln_kappa2, digits = 2))),
-    x = -172.5, y = 55.5, color = "grey20", size = 2.8
-  ) +
-  facet_grid(factor(var, levels = c("Original", "Diffused")) ~ abb_name) +
-  scale_fill_viridis(option = "mako", na.value = NA, direction = -1) +
-  scale_color_viridis(option = "mako", na.value = NA, direction = -1) +
-  guides(fill = "none") +
-  labs(caption = "Species with high correlation *and* high delta AIC") +
-  theme(
-    strip.text.x = element_markdown(),
-    plot.caption = element_markdown()
-  )
-
-ggsave(paste0(here::here(), "/results/figures/supporting/test_corr_delta_aic_1.pdf"), width = 20, height = 14, unit = "cm")
-
-
-pp1 <- mp_ebs_s +
-  geom_sf(
-    data = ebs_stuff_test |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")) |>
-      rename(
-        Original = `orig`,
-        Diffused = `diffused`
-      ) |>
-      pivot_longer(c(Original, Diffused), names_to = "var") |>
-      filter(var == "Original"),
-    aes(fill = value, color = value), linewidth = 0.01
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Delta AIC=", round(deltaAIC, digits = 2))),
-    x = -172, y = 53.5, color = "grey20", size = 2
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Orig:Diff corr=", round(covar_corr, digits = 3))),
-    x = -172, y = 54.5, color = "grey20", size = 2
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("ln(kappa2)=", round(ln_kappa2, digits = 2))),
-    x = -172, y = 55.5, color = "grey20", size = 2
-  ) +
-  facet_grid(factor(var, levels = c("Original", "Diffused")) ~ abb_name) +
-  scale_fill_viridis(option = "mako", na.value = NA, breaks = c(1, 3, 6, 9), direction = -1) +
-  scale_color_viridis(option = "mako", na.value = NA, direction = -1) +
-  guides(fill = "none") +
-  theme(
-    axis.text.x = element_blank(),
-    axis.title.x = element_blank(),
-    strip.text.x = element_markdown(),
-    plot.caption = element_markdown()
-  )
-
-pp2 <- mp_ebs_s +
-  geom_sf(
-    data = ebs_stuff_test |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")) |>
-      rename(
-        Original = `orig`,
-        Diffused = `diffused`
-      ) |>
-      pivot_longer(c(Original, Diffused), names_to = "var") |>
-      filter(var == "Diffused"),
-    aes(fill = value, color = value), linewidth = 0.01
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Delta AIC=", round(deltaAIC, digits = 2))),
-    x = -172, y = 53.5, color = "grey20", size = 2
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("Orig:Diff corr=", round(covar_corr, digits = 3))),
-    x = -172, y = 54.5, color = "grey20", size = 2
-  ) +
-  geom_text(
-    data = test_df |>
-      filter(!abb_name %in% c("a_atf", "a_kam", "a_rex")),
-    aes(label = paste0("ln(kappa2)=", round(ln_kappa2, digits = 2))),
-    x = -172, y = 55.5, color = "grey20", size = 2
-  ) +
-  labs(caption = "Species with low correlation and high delta AIC") +
-  facet_grid(factor(var, levels = c("Original", "Diffused")) ~ abb_name) +
-  scale_fill_viridis(option = "mako", na.value = NA, breaks = c(1, 3, 6, 9), direction = -1) +
-  scale_color_viridis(option = "mako", na.value = NA, direction = -1) +
-  guides(fill = "none") +
-  theme(
-    strip.text.x = element_blank(),
-    plot.caption = element_markdown()
-  )
-
-pp1 / pp2
-
-ggsave(paste0(here::here(), "/results/figures/supporting/test_corr_delta_aic_2.pdf"), width = 20, height = 16, unit = "cm")
-
-
 
 # Plot partial effects
 diff_sp <- ebs_stuff |>
-  dplyr::filter(species %in% test_sp$abb_name) |>
+  dplyr::filter(abb_name %in% test_sp$abb_name) |>
   dplyr::filter(!species == "a_yil") |>
   rename(
     Original = `pdepth orig`,
@@ -750,7 +553,7 @@ mp_ebs_fc +
       filter(species %in% c("a_kam", "a_akplce", "cap", "j_akplce", "j_great", "rking")),
     aes(fill = diff_scaled, color = diff_scaled), linewidth = 0.01
   ) +
-  facet_wrap(~species) +
+  facet_wrap(~abb_name) +
   scale_fill_gradient2(na.value = NA, name = "Scaled difference between Diffusion and Original partial effect") +
   scale_color_gradient2(na.value = NA) +
   geom_sf(linewidth = 0.4, color = "gray40") +

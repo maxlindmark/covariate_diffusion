@@ -28,7 +28,7 @@ mp_ebs_s <- map_plot_ebs +
         legend.direction = "horizontal",
         strip.text = element_markdown(),
         legend.position.inside = c(0.17, 0.03)) +
-  facet_wrap(~species, ncol = 1) +
+  facet_wrap(~abb_name, ncol = 1) +
   NULL
 
 mp_ebs_fc <- map_plot_ebs +
@@ -44,7 +44,7 @@ mp_ebs_fc <- map_plot_ebs +
     axis.text.x = element_text(angle = 90),
     strip.text = element_markdown()
   ) +
-  facet_wrap(~species) + # FIXME: use the abb_name once I get the latin names
+  facet_wrap(~abb_name) + # FIXME: use the abb_name once I get the latin names
   scale_fill_gradient2() +
   NULL
 
