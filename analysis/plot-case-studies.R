@@ -9,11 +9,12 @@ library(ggsidekick)
 theme_set(theme_sleek())
 library(viridis)
 library(sf)
+library(readr)
 library(forcats)
 library(ggrepel)
 library(egg)
 
-
+root_dir <- here::here(".")
 
 ### Plot results from the case studies
 # Read data
@@ -65,7 +66,7 @@ p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_co
   ) +
   scale_fill_viridis(option = "rocket")
 
-tag_facet(p, fontface = 1, size = 3.5, hjust = -12)
+tag_facet(p, fontface = 1, size = 3.5, hjust = -9.5)
 
 ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, height = 19, unit = "cm", device = cairo_pdf)
 
