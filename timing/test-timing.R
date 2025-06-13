@@ -116,6 +116,8 @@ grid_coords <- expand.grid(
 grid_coords <- as.matrix(grid_coords)
 A_gs <- fm_evaluator(s$mesh$mesh, loc = grid_coords)$proj$A
 invM0 <- invsqrtM0 <- spde$c0
+diag(invsqrtM0) <- 1 / sqrt(diag(spde$c0))
+diag(invM0) <- 1 / diag(spde$c0)
 depthprime_s <- s$dat_knots$a1 # This is our predictor *at the knots!*
 
 # simple non-difussion version:
