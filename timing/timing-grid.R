@@ -68,7 +68,6 @@ simulate_dat <- function(n_obs = 100,
   list(mesh = mesh, dat = sim_dat, dat_knots = sim_dat_knots)
 }
 
-
 # Simulate a simple data set and try and fit a model
 set.seed(1)
 s <- simulate_dat(n_obs = 5000)
@@ -95,6 +94,8 @@ fit_models <- function(sim_object) {
   grid_coords <- as.matrix(grid_coords)
   A_gs <- fm_evaluator(s$mesh$mesh, loc = grid_coords)$proj$A
   invM0 <- invsqrtM0 <- spde$c0
+  diag(invsqrtM0) <- 1 / sqrt(diag(spde$c0))
+  diag(invM0) <- 1 / diag(spde$c0)
   depthprime_s <- s$dat_knots$a1 # This is our predictor *at the knots!*
 
   Params <- list(
@@ -165,7 +166,7 @@ fit_models <- function(sim_object) {
       start = Obj_diff$par,
       obj = Obj_diff$fn,
       grad = Obj_diff$gr,
-      control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
+      control = list(eval.max = 1e4, iter.max = 1e4, trace = 0)
     )
   })
   times$diffused_nlminb <- out[["elapsed"]]
@@ -180,4 +181,29 @@ fit_models <- function(sim_object) {
   as.data.frame(times)
 }
 
-fit_models(sim_object = s)
+# fit_models(sim_object = s)
+
+to_run <- expand.grid(
+  n_obs = c(1e3, 1e4, 1e5),
+  max.edge = c(0.05, 0.1, 0.15, 0.2),
+  iter = 1
+)
+to_run$seed <- to_run$iter * 29212
+nrow(to_run)
+
+# don't run in parallel to ensure all timing is comparable:
+system.time({
+  sim_out <- purrr::pmap(
+    to_run,
+    simulate_dat,
+    .progress = "timing"
+  )
+})
+
+system.time({
+  fit_out <- purrr::map_dfr(
+    sim_out,
+    fit_models,
+    .progress = "timing"
+  )
+})
