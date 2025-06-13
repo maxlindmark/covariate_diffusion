@@ -207,3 +207,15 @@ system.time({
     .progress = "timing"
   )
 })
+fit_out$seed <- to_run$seed
+
+tidyr::pivot_longer(fit_out, cols = c(-n, -knots)) |>
+  mutate(Diffused = grepl("diffused", name)) |>
+  mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
+  mutate(n_text = paste0("n = ", n)) |>
+  ggplot(aes(knots, value, colour = Diffused)) +
+  geom_line() +
+  facet_grid(type ~ n_text, scales = "free_y") +
+  ylab("Time (s)") +
+  xlab("Mesh vertices") +
+  scale_color_brewer(palette = "Set2")
