@@ -8,7 +8,8 @@ library(Matrix)
 library(TMB)
 library(dplyr)
 library(ggplot2)
-library(ggsidekick); theme_set(theme_sleek())
+library(ggsidekick)
+theme_set(theme_sleek())
 
 # Code to simulate spatially structured data based on https://github.com/seananderson/sdmTMB-paper/blob/main/analysis/timing.R
 
@@ -35,10 +36,10 @@ simulate_dat <- function(n_obs = 100,
     offset = c(0.1, 0.05)
   )
 
-  loc <- me$loc[,1:2] # mesh vertices
+  loc <- me$loc[, 1:2] # mesh vertices
   predictor_dat <- data.frame(
-    X = c(runif(n_obs), loc[,1]), 
-    Y = c(runif(n_obs), loc[,2]),
+    X = c(runif(n_obs), loc[, 1]),
+    Y = c(runif(n_obs), loc[, 2]),
     a1 = rnorm(n_obs + nrow(loc))
   )
 
@@ -62,8 +63,8 @@ simulate_dat <- function(n_obs = 100,
       scale_color_gradient2()
     print(g)
   }
-  sim_dat_knots <- sim_dat[(n_obs+1):nrow(sim_dat),]
-  sim_dat <- sim_dat[1:n_obs,]
+  sim_dat_knots <- sim_dat[(n_obs + 1):nrow(sim_dat), ]
+  sim_dat <- sim_dat[1:n_obs, ]
   list(mesh = mesh, dat = sim_dat, dat_knots = sim_dat_knots)
 }
 
@@ -89,6 +90,9 @@ dyn.load(dynlib("timing/covariate_diffusion"))
 
 compile("timing/simple.cpp", framework = "TMBad")
 dyn.load(dynlib("timing/simple"))
+
+# compile("tmb/movement_kernel_sim.cpp", framework = "TMBad")
+# dyn.load(dynlib("tmb/movement_kernel_sim"))
 
 # Prepare data for MakeADFun
 distribution <- c("Tweedie", "Poisson", "LNP")[2]
@@ -183,7 +187,7 @@ Random <- "omega_s"
 # Random <- c(Random, "eta_i")
 
 Data <- list(
-  "method" = "null", #"method" = "diffusion",
+  "method" = "null", # "method" = "diffusion",
   "dist" = distribution,
   "c_i" = as.integer(s$dat$observed),
   "A_is" = A_is,
@@ -225,7 +229,7 @@ Opt$par
 m$model$par
 
 Data <- list(
-  "method" = "diffusion", #"method" = "diffusion",
+  "method" = "diffusion", # "method" = "diffusion",
   "dist" = distribution,
   "c_i" = as.integer(s$dat$observed),
   "A_is" = A_is,
@@ -241,6 +245,14 @@ Data <- list(
   "sim_gmrf" = 0L
 )
 
+Params <- list(
+  "beta0" = 0,
+  "beta_j" = -0.2,
+  "ln_tau" = -2.5,
+  "ln_kappa" = 2.5,
+  "omega_s" = rep(0, nrow(spde$c0)),
+  "ln_kappa2" = exp(-1)
+)
 Obj_diff <- MakeADFun(
   data = Data,
   parameters = Params,
@@ -248,7 +260,19 @@ Obj_diff <- MakeADFun(
   checkParameterOrder = TRUE,
   DLL = "covariate_diffusion"
 )
-Obj_diff$env$beSilent()
+# Obj_diff$env$beSilent()
+Obj_diff$fn()
+Obj_diff$gr()
+
+r <- Obj_diff$report()
+names(r)
+r$invD
+r$Range2
+r$ln_kappa2
+r$depth_s
+r$depth_i
+r$depth_g
+r$mu_i
 
 tictoc::tic()
 Opt <- nlminb(

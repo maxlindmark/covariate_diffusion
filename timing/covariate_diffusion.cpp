@@ -76,10 +76,10 @@ Type objective_function<Type>::operator() ()
   vector<Type> omega_g = A_gs * omega_s;
   REPORT(depth_s);
   REPORT(depth_i);
-  // REPORT(depth_g);
+  REPORT(depth_g);
   vector<Type> omega_i = A_is * omega_s;
   vector<Type> pdepth_i = depth_i * beta_j(0); // + pow(depth_i,2)*beta_j(1); // ML: try omitting squared term
-  // vector<Type> pdepth_g = depth_g * beta_j(0); // + pow(depth_g,2)*beta_j(1); // ML: try omitting squared term
+  vector<Type> pdepth_g = depth_g * beta_j(0); // + pow(depth_g,2)*beta_j(1); // ML: try omitting squared term
 
   // Probability of data conditional on random effects
   vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
