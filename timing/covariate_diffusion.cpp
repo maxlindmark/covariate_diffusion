@@ -11,8 +11,11 @@ Type objective_function<Type>::operator() ()
   DATA_STRING(method);
   DATA_STRING(dist);
   DATA_VECTOR(c_i);  // counts for observation i
-  DATA_VECTOR(depth_s);  // counts for observation i
-  DATA_INTEGER(sim_gmrf) // simulate GMRFs?
+  DATA_VECTOR(depth_s);  // depth at knots!
+  DATA_VECTOR(depth_i_obs);  // depth at observations
+  DATA_INTEGER(sim_gmrf); // simulate GMRFs?
+  DATA_STRING(covariate_type);
+                         
 
   // SPDE objects
   DATA_SPARSE_MATRIX(M0);
@@ -64,25 +67,29 @@ Type objective_function<Type>::operator() ()
     //REPORT(SigmaD);
     REPORT(ln_kappa2);
   }
+
   vector<Type> depth_i = A_is * depth_s;
+  if (covariate_type == "at observation") {
+    vector<Type> depth_i = depth_i_obs;
+  }
   vector<Type> depth_g = A_gs * depth_s;
+  vector<Type> omega_g = A_gs * omega_s;
   REPORT(depth_s);
   REPORT(depth_i);
-  REPORT(depth_g);
+  // REPORT(depth_g);
   vector<Type> omega_i = A_is * omega_s;
-  vector<Type> omega_g = A_gs * omega_s;
-  vector<Type> pdepth_i = depth_i*beta_j(0); // + pow(depth_i,2)*beta_j(1); // ML: try omitting squared term
-  vector<Type> pdepth_g = depth_g*beta_j(0); // + pow(depth_g,2)*beta_j(1); // ML: try omitting squared term
+  vector<Type> pdepth_i = depth_i * beta_j(0); // + pow(depth_i,2)*beta_j(1); // ML: try omitting squared term
+  // vector<Type> pdepth_g = depth_g * beta_j(0); // + pow(depth_g,2)*beta_j(1); // ML: try omitting squared term
 
   // Probability of data conditional on random effects
   vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
-  if(dist=="Poisson"){
+  if (dist=="Poisson"){
     for(int i=0; i<c_i.size(); i++){
       jnll -= dpois(c_i(i), mu_i(i), true);
       SIMULATE{c_i(i) = rpois(mu_i(i));}
     }
   }
-  if(dist=="Tweedie"){
+  if (dist=="Tweedie"){
     PARAMETER(ln_phi);
     PARAMETER(finv_power);
     for(int i=0; i<c_i.size(); i++){
@@ -90,7 +97,7 @@ Type objective_function<Type>::operator() ()
       SIMULATE{c_i(i) = rtweedie(mu_i(i), exp(ln_phi), 1.0 + invlogit(finv_power));}
     }
   }
-  if(dist=="LNP"){
+  if (dist=="LNP"){
     PARAMETER(ln_sigma_eta);
     PARAMETER_VECTOR(eta_i);
     for(int i=0; i<c_i.size(); i++){
@@ -102,16 +109,16 @@ Type objective_function<Type>::operator() ()
       }
     }
   }
-  vector<Type> mu_g = exp(beta0 + omega_g + pdepth_g);
+  // vector<Type> mu_g = exp(beta0 + omega_g + pdepth_g);
 
   // Reporting
   REPORT(Q);
   //REPORT(omega_s);
-  REPORT(omega_g);
+  // REPORT(omega_g);
   REPORT(mu_i);
-  REPORT(mu_g);
-  REPORT(pdepth_i);
-  REPORT(pdepth_g);
+  // REPORT(mu_g);
+  // REPORT(pdepth_i);
+  // REPORT(pdepth_g);
 
   SIMULATE {
     REPORT(c_i);
