@@ -211,14 +211,14 @@ fit_out$seed <- to_run$seed
 
 fit_out |>
   tidyr::pivot_longer(cols = c(-n, -knots, -seed)) |>
-  summarise(mean = median(value),
+  summarise(median = median(value),
             upr = quantile(value, probs = 0.95),
             lwr = quantile(value, probs = 0.05),
             .by = c(n, knots, name)) |>
   mutate(Diffused = grepl("diffused", name)) |>
   mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
   mutate(n_text = paste0("n = ", n)) |>
-  ggplot(aes(knots, mean, colour = Diffused)) +
+  ggplot(aes(knots, median, colour = Diffused)) +
   geom_ribbon(aes(ymin = lwr, ymax = upr, fill = Diffused), alpha = 0.3, color = NA) +
   geom_line() +
   facet_grid(type ~ n_text, scales = "free_y") +
@@ -228,4 +228,29 @@ fit_out |>
   scale_fill_brewer(palette = "Dark2")
 
 ggsave(paste0(here::here(), "/results/figures/supporting/timing.pdf"),
-       width = 16, height = 9, unit = "cm")
+      width = 16, height = 9, unit = "cm")
+
+# Relative plot
+fit_out |>
+  tidyr::pivot_longer(cols = c(-n, -knots, -seed)) |>
+  summarise(median = median(value),
+            upr = quantile(value, probs = 0.95),
+            lwr = quantile(value, probs = 0.05),
+            .by = c(n, knots, name)) |>
+  dplyr::select(-upr, -lwr) |>
+  tidyr::pivot_wider(names_from = name, values_from = median) |>
+  mutate(ratio_nlminb = diffused_nlminb / standard_nlminb,
+         ratio_sdreport = diffused_sdreport / standard_sdreport) |>
+  tidyr::pivot_longer(c(ratio_nlminb, ratio_sdreport)) |>
+  mutate(mean = mean(value), .by = c(name, n)) |>
+  #mutate(Diffused = grepl("nlminb", name)) |>
+  mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
+  mutate(n_text = paste0("n = ", n)) |>
+  ggplot(aes(knots, value)) +
+  geom_hline(aes(yintercept = mean)) +
+  geom_line() +
+  facet_grid(type ~ n_text, scales = "free_y") +
+  ylab("Time (s)") +
+  xlab("Mesh vertices") +
+  scale_color_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Dark2")
