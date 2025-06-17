@@ -186,7 +186,7 @@ fit_models <- function(sim_object) {
 to_run <- expand.grid(
   n_obs = c(1e3, 1e4, 1e5),
   max.edge = c(0.05, 0.1, 0.15, 0.2),
-  iter = 1
+  iter = c(1:50)
 )
 to_run$seed <- to_run$iter * 29212
 nrow(to_run)
@@ -209,13 +209,23 @@ system.time({
 })
 fit_out$seed <- to_run$seed
 
-tidyr::pivot_longer(fit_out, cols = c(-n, -knots)) |>
+fit_out |>
+  tidyr::pivot_longer(cols = c(-n, -knots, -seed)) |>
+  summarise(mean = median(value),
+            upr = quantile(value, probs = 0.95),
+            lwr = quantile(value, probs = 0.05),
+            .by = c(n, knots, name)) |>
   mutate(Diffused = grepl("diffused", name)) |>
   mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
   mutate(n_text = paste0("n = ", n)) |>
-  ggplot(aes(knots, value, colour = Diffused)) +
+  ggplot(aes(knots, mean, colour = Diffused)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr, fill = Diffused), alpha = 0.3, color = NA) +
   geom_line() +
   facet_grid(type ~ n_text, scales = "free_y") +
   ylab("Time (s)") +
   xlab("Mesh vertices") +
-  scale_color_brewer(palette = "Set2")
+  scale_color_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Dark2")
+
+ggsave(paste0(here::here(), "/results/figures/supporting/timing.pdf"),
+       width = 16, height = 9, unit = "cm")
