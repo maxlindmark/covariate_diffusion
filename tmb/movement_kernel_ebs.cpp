@@ -11,6 +11,7 @@ Type objective_function<Type>::operator() ()
   DATA_STRING(method);
   DATA_STRING(dist);
   DATA_VECTOR(c_i);  // counts for observation i
+  DATA_VECTOR(weights_i); // new: weights for calculating cAIC
   DATA_VECTOR(depth_s);  // counts for observation i
   DATA_INTEGER(sim_gmrf) // simulate GMRFs?
 
@@ -34,7 +35,7 @@ Type objective_function<Type>::operator() ()
   // Random effects
   PARAMETER_VECTOR(omega_s);
 
-  // Objective funcction
+  // Objective function
   Type jnll = 0.0;
 
   // Derived quantities
@@ -75,11 +76,25 @@ Type objective_function<Type>::operator() ()
   vector<Type> pdepth_g = depth_g*beta_j(0) + pow(depth_g,2)*beta_j(1);
 
   // Probability of data conditional on random effects
+  // vector<Type> mu_i = exp(beta0 + omega_i + depth_s);
+  // if(dist=="Poisson"){
+  //   for(int i=0; i<c_i.size(); i++){
+  //     jnll -= dpois(c_i(i), mu_i(i), true);
+  //     SIMULATE{c_i(i) = rpois(mu_i(i));}
+  //   }
+  // }
+  // I need to add weights here so that I can set them to 0 when calculating conditional AIC
   vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
   if(dist=="Poisson"){
-    for(int i=0; i<c_i.size(); i++){
+  for(int i=0; i<c_i.size(); i++){
+    if (weights_i(i) > Type(0.0)) {
       jnll -= dpois(c_i(i), mu_i(i), true);
-      SIMULATE{c_i(i) = rpois(mu_i(i));}
+      }
+    SIMULATE {
+      if (weights_i(i) > Type(0.0)) {
+        c_i(i) = rpois(mu_i(i));
+        }
+      }
     }
   }
   if(dist=="Tweedie"){
@@ -90,15 +105,31 @@ Type objective_function<Type>::operator() ()
       SIMULATE{c_i(i) = rtweedie(mu_i(i), exp(ln_phi), 1.0 + invlogit(finv_power));}
     }
   }
+  // if(dist=="LNP"){
+  //   PARAMETER(ln_sigma_eta);
+  //   PARAMETER_VECTOR(eta_i);
+  //   for(int i=0; i<c_i.size(); i++){
+  //     jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
+  //     jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
+  //     SIMULATE{
+  //       eta_i(i) = rnorm(Type(0.0), exp(ln_sigma_eta));
+  //       c_i(i) = rpois(mu_i(i) * exp(eta_i(i)));
+  //     }
+  //   }
+  // }
   if(dist=="LNP"){
     PARAMETER(ln_sigma_eta);
     PARAMETER_VECTOR(eta_i);
     for(int i=0; i<c_i.size(); i++){
-      jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
-      jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
-      SIMULATE{
-        eta_i(i) = rnorm(Type(0.0), exp(ln_sigma_eta));
-        c_i(i) = rpois(mu_i(i) * exp(eta_i(i)));
+      if (weights_i(i) > Type(0.0)) {
+        jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
+        jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
+      }
+      SIMULATE {
+        if (weights_i(i) > Type(0.0)) {
+          eta_i(i) = rnorm(Type(0.0), exp(ln_sigma_eta));
+          c_i(i) = rpois(mu_i(i) * exp(eta_i(i)));
+        }
       }
     }
   }

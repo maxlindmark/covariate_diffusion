@@ -6,6 +6,8 @@ tmb_dir <- file.path(root_dir, "tmb")
 # https://stackoverflow.com/questions/52975447/reorganize-sf-multi-plot-and-add-a-legend
 source(file.path(root_dir, "functions/add-legend.R"))
 source(here::here("analysis/prep-bb-data.R"))
+# source conditional AIC function
+source(here::here("analysis/mod-cAIC.R"))
 
 # Compile
 setwd(tmb_dir)
@@ -18,7 +20,7 @@ species_set <- colnames(sf_DF)[3:22]
 sf_DF <- as.data.frame(sf_DF)
 
 #
-param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
+param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
 Results_cz <- array(NA,
   dim = c(length(species_set), length(param_set)),
   dimnames = list(species_set, param_set)
@@ -38,6 +40,7 @@ for (cI in seq_along(species_set)) {
     "method" = "diffusion",
     "dist" = distribution,
     "c_i" = sf_DF[, species],
+    "weights_i" = rep(1, times = length(sf_DF[, species])),
     "A_is" = A_is,
     "A_gs" = A_gs,
     "M0" = spde$c0,
@@ -112,8 +115,29 @@ for (cI in seq_along(species_set)) {
     control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
   )
   Report2 <- Obj2$report()
-
   #
+
+  # Calculate delta conditional AIC
+  diff_cAIC <- cAIC.TMB(
+    obj = Obj,
+    tmb_data = Data,
+    parlist = Params,
+    random = Random,
+    p = length(setdiff(names(Params), Random)),
+    what = "cAIC"  # or "EDF"
+  )
+
+  null_cAIC <- cAIC.TMB(
+    obj = Obj2,
+    tmb_data = Data2,
+    parlist = Params2,
+    random = Random,
+    p = length(setdiff(names(Params2), Random)),
+    what = "cAIC"  # or "EDF"
+  )
+
+
+  Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
   Results_cz[cI, "deltaAIC"] <- (2 * Opt2$objective + 2 * length(Opt2$par)) - (2 * Opt$objective + 2 * length(Opt$par))
   Results_cz[cI, "obj_null"] <- Opt2$objective
   write.csv(Results_cz, file = file.path(date_dir, "Results_bb_cz.csv"))
