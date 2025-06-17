@@ -296,7 +296,7 @@ sim_df <- bind_rows(sim_dat_list)
 
 #### Fit models to simulated data
 
-I will fit two models; with and without diffusion. In this example, I draw 100 simulated data sets (based on the "rounded" fixed effect estimates while keeping the GMRF to the adult yellowfin sole values) in a for-loop and fit both models, then I extract the estimates.
+I will fit two models; with and without diffusion. In this example, I draw 200 simulated data sets (based on the "rounded" fixed effect estimates while keeping the GMRF to the adult yellowfin sole values) in a for-loop and fit both models, then I extract the estimates.
 
 ```{r fit to simulated data}
 #| results: hide
