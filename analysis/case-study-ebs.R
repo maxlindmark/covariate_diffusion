@@ -22,6 +22,7 @@ species_set <- species_set[N_c > 1000]
 
 #
 param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_depth")
+#param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_depth")
 Results_cz <- array(NA,
   dim = c(length(species_set), length(param_set)),
   dimnames = list(species_set, param_set)
@@ -35,6 +36,7 @@ mean_depth_s <- mean(depth_s)
 sd_depth_s <- sd(depth_s)
 
 # Loop
+cI <- 26
 # cI = match( "a_yfs", species_set )
 # cI = match( c("a_poll", "cap"), species_set )
 for (cI in seq_along(species_set)) {
@@ -154,7 +156,7 @@ for (cI in seq_along(species_set)) {
   )
 
 
-  Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
+  #Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
   Results_cz[cI, "deltaAIC"] <- (2 * Opt2$objective + 2 * length(Opt2$par)) - (2 * Opt$objective + 2 * length(Opt$par))
   Results_cz[cI, "obj_null"] <- Opt2$objective
   write.csv(Results_cz, file = file.path(date_dir, "Results_cz.csv"))
