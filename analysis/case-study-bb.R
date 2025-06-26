@@ -1,3 +1,5 @@
+#setwd(R'(C:\Users\James.Thorson\Desktop\Git\covariate_diffusion)')
+#root_dir = getwd()
 root_dir <- here::here(".")
 data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
@@ -53,7 +55,7 @@ for (cI in seq_along(species_set)) {
   )
   Params <- list(
     "beta0" = 0,
-    "beta_j" = c(0.1, 0.1),
+    "beta_j" = c(0.1),
     "ln_tau" = 0,
     "ln_kappa" = 0,
     "omega_s" = rnorm(nrow(spde$c0)),
@@ -87,6 +89,7 @@ for (cI in seq_along(species_set)) {
     grad = Obj$gr,
     control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
   )
+  #SD = sdreport( Obj )
   Report <- Obj$report()
 
   # Stationary distribution
@@ -115,6 +118,7 @@ for (cI in seq_along(species_set)) {
     control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
   )
   Report2 <- Obj2$report()
+  #SD2 = sdreport( Obj2 )
   #
 
   # Calculate delta conditional AIC
