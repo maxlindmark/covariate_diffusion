@@ -21,8 +21,8 @@ species_set <- colnames(sf_DF)[3:22]
 
 sf_DF <- as.data.frame(sf_DF)
 
-#
 param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
+#param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
 Results_cz <- array(NA,
   dim = c(length(species_set), length(param_set)),
   dimnames = list(species_set, param_set)
@@ -119,7 +119,6 @@ for (cI in seq_along(species_set)) {
   )
   Report2 <- Obj2$report()
   #SD2 = sdreport( Obj2 )
-  #
 
   # Calculate delta conditional AIC
   diff_cAIC <- cAIC.TMB(
@@ -140,11 +139,10 @@ for (cI in seq_along(species_set)) {
     what = "cAIC"  # or "EDF"
   )
 
-
   Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
   Results_cz[cI, "deltaAIC"] <- (2 * Opt2$objective + 2 * length(Opt2$par)) - (2 * Opt$objective + 2 * length(Opt$par))
   Results_cz[cI, "obj_null"] <- Opt2$objective
-  write.csv(Results_cz, file = file.path(date_dir, "Results_bb_cz.csv"))
+  write.csv(Results_cz, file = file.path(date_dir, "Results_cz.csv"))
 
   # Plot results
   png(file = file.path(date_dir, paste0(species, ".png")), width = 6, height = 6, res = 200, units = "in")

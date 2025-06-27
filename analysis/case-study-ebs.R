@@ -13,14 +13,12 @@ source(here::here("analysis/mod-cAIC.R"))
 setwd(tmb_dir)
 compile("movement_kernel_ebs.cpp", framework = "TMBad")
 dyn.load(dynlib("movement_kernel_ebs"))
-# dyn.unload( dynlib("movement_kernel") )
 
 # saving stuff
 species_set <- colnames(region_data_all)[30:ncol(region_data_all)]
 N_c <- colSums(ifelse(region_data_all[, species_set] > 0, 1, 0))
 species_set <- species_set[N_c > 1000]
 
-#
 param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_depth")
 #param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_depth")
 Results_cz <- array(NA,
@@ -36,9 +34,10 @@ mean_depth_s <- mean(depth_s)
 sd_depth_s <- sd(depth_s)
 
 # Loop
-cI <- 26
-# cI = match( "a_yfs", species_set )
-# cI = match( c("a_poll", "cap"), species_set )
+# cI <- 26
+# This species has a non positive definite Hessian, so it throws an error when doing sdreport!
+species_set <- species_set[-26]
+
 for (cI in seq_along(species_set)) {
   species <- species_set[cI]
 
@@ -155,8 +154,7 @@ for (cI in seq_along(species_set)) {
     what = "cAIC"  # or "EDF"
   )
 
-
-  #Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
+  Results_cz[cI, "deltaCAIC"] <- null_cAIC - diff_cAIC
   Results_cz[cI, "deltaAIC"] <- (2 * Opt2$objective + 2 * length(Opt2$par)) - (2 * Opt$objective + 2 * length(Opt$par))
   Results_cz[cI, "obj_null"] <- Opt2$objective
   write.csv(Results_cz, file = file.path(date_dir, "Results_cz.csv"))

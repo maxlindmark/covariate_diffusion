@@ -13,6 +13,7 @@ library(readr)
 library(forcats)
 library(ggrepel)
 library(egg)
+library(stringr)
 
 root_dir <- here::here(".")
 
@@ -21,14 +22,24 @@ root_dir <- here::here(".")
 ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
-ebs <- # read.csv(paste0(root_dir, "/results/2024-08-12_identity_LNP/Results_cz.csv")) |>
-  read.csv(paste0(root_dir, "/results/2024-09-24_identity_LNP/Results_cz.csv")) |>
+ebs <-
+  # read.csv(paste0(root_dir, "/results/2024-08-12_identity_LNP/Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2024-09-24_identity_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
 
+ebs |> distinct(abb_name) |> arrange()
+
+# Fixme: this species is now NA...
+#ebs |> filter(abb_name == "<i>P. camtschaticus</i> (Bb)")
+ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
+
 # Breeding bird case
-bb <- read.csv(paste0(root_dir, "/results/2024-08-07_LNP/Results_bb_cz.csv")) |>
+bb <-
+  #read.csv(paste0(root_dir, "/results/2024-08-07_LNP/Results_bb_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-06-27_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -42,6 +53,10 @@ dd <- bind_rows(
   bb |> mutate(case = "Breeding bird survey")
 )
 
+ebs |> nrow()
+ebs |> filter(deltaAIC > 2) |> nrow()
+ebs |> filter(deltaCAIC > 2) |> nrow()
+
 p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_corr)) +
   geom_rect(aes(xmin = 2, xmax = Inf, ymin = -Inf, ymax = Inf),
     fill = "grey95"
@@ -49,7 +64,7 @@ p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_co
   geom_vline(xintercept = c(-2, 2), alpha = 0.5, linetype = 2, linewidth = 0.35) +
   geom_vline(xintercept = 0, alpha = 0.3, linetype = 1, linewidth = 0.35) +
   geom_point(shape = 21, color = "grey10", stroke = 0.01, size = 2.3) +
-  labs(x = "ΔAIC", y = "Species", fill = "Correlation between raw and diffused covariate") +
+  labs(x = "ΔmAIC", y = "Species", fill = "Correlation between raw and diffused covariate") +
   scale_x_continuous(
     trans = "fourth_root_power",
     breaks = c(-2, 0, 2, 40, 80, 120)
@@ -527,7 +542,7 @@ test_df <- ebs |>
   ))
 
 ebs_stuff_test <- ebs_stuff |>
-  rename(abb_name = species) |>
+  #rename(abb_name = species) |>
   filter(abb_name %in% unique(test_df$abb_name))
 
 ebs_stuff_test <- ebs_stuff_test |>
