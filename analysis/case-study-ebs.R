@@ -141,7 +141,6 @@ for (cI in seq_along(species_set)) {
     tmb_data = Data,
     parlist = Params,
     random = Random,
-    p = length(setdiff(names(Params), Random)),
     what = "cAIC"  # or "EDF"
   )
 
@@ -150,7 +149,6 @@ for (cI in seq_along(species_set)) {
     tmb_data = Data2,
     parlist = Params2,
     random = Random,
-    p = length(setdiff(names(Params2), Random)),
     what = "cAIC"  # or "EDF"
   )
 

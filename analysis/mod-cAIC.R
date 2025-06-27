@@ -5,7 +5,7 @@
 # \doi{10.48550/arXiv.2411.14185}
 
 #cAIC.sdmTMB <- function(object, what = c("cAIC", "EDF"), ...) {
-cAIC.TMB <- function(obj, tmb_data, parlist, random, p, what = c("cAIC", "EDF")) {
+cAIC.TMB <- function(obj, tmb_data, parlist, random, what = c("cAIC", "EDF")) {
 
   what <- tolower(what)
   what <- match.arg(what, choices = c("caic", "edf"))
@@ -45,7 +45,7 @@ cAIC.TMB <- function(obj, tmb_data, parlist, random, p, what = c("cAIC", "EDF"))
   parDataMode <- obj$env$last.par.best # FIXME: obj$env$last.par ??
   indx <- obj$env$lrandom()
   q <- sum(indx)
-  #p <- length(object$model$par)
+  p <- length(object$par)
 
   ## use '-' for Hess because model returns negative loglikelihood
   #if (is.null(object$tmb_random)) {
