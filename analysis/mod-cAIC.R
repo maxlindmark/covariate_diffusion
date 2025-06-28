@@ -31,7 +31,7 @@ cAIC.TMB <- function(obj, tmb_data, parlist, random, what = c("cAIC", "EDF")) {
   # }
 
   ## Make obj_new
-  tmb_data$weights_i[] <- 0 # FIXME: This isn't doing anything unless I change the .cpp file
+  tmb_data$weights_i[] <- 0
   obj_new <- TMB::MakeADFun(
     data = tmb_data,
     parameters = parlist, #parameters = object$parlist,
@@ -45,7 +45,7 @@ cAIC.TMB <- function(obj, tmb_data, parlist, random, what = c("cAIC", "EDF")) {
   parDataMode <- obj$env$last.par.best # FIXME: obj$env$last.par ??
   indx <- obj$env$lrandom()
   q <- sum(indx)
-  p <- length(object$par)
+  p <- length(obj$par)
 
   ## use '-' for Hess because model returns negative loglikelihood
   #if (is.null(object$tmb_random)) {
