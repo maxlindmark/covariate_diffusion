@@ -247,7 +247,7 @@ fit_out |>
   mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
   mutate(n_text = paste0("n = ", n)) |>
   ggplot(aes(knots, value)) +
-  geom_hline(aes(yintercept = mean)) +
+  geom_hline(aes(yintercept = mean, color = "mean")) +
   geom_line() +
   facet_grid(type ~ n_text, scales = "free_y") +
   ylab("Time (s)") +
