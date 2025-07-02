@@ -105,6 +105,9 @@ for (cI in seq_along(species_set)) {
     control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
   )
   Report <- Obj$report()
+  # tictoc::tic()
+  # SD = sdreport( Obj )
+  # tictoc::toc()
 
   # Stationary distribution
   Results_cz[cI, "obj_diffusion"] <- Opt$objective

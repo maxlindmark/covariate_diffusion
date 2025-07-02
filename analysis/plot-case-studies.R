@@ -23,23 +23,20 @@ ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
 ebs <-
-  # read.csv(paste0(root_dir, "/results/2024-08-12_identity_LNP/Results_cz.csv")) |>
-  #read.csv(paste0(root_dir, "/results/2024-09-24_identity_LNP/Results_cz.csv")) |>
-  read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
 
 ebs |> distinct(abb_name) |> arrange()
 
-# Fixme: this species is now NA...
+# This species is now NA...
 #ebs |> filter(abb_name == "<i>P. camtschaticus</i> (Bb)")
 ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
 
 # Breeding bird case
 bb <-
-  #read.csv(paste0(root_dir, "/results/2024-08-07_LNP/Results_bb_cz.csv")) |>
-  read.csv(paste0(root_dir, "/results/2025-06-27_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -91,7 +88,7 @@ ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, he
 source(file.path(root_dir, "functions/bb-map-plot.R"))
 
 bb_stuff <-
-  readRDS(paste0(here::here(), "/results/2024-08-07_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -180,7 +177,7 @@ ggsave(paste0(here::here(), "/results/figures/supporting/bb_diffused_original.pd
 source(file.path(root_dir, "functions/ebs-map-plot.R"))
 
 ebs_stuff <-
-  readRDS(paste0(here::here(), "/results/2024-09-24_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X"))
 
 sub <- ebs_stuff |> dplyr::filter(species %in% c("a_poll", "cap"))
@@ -461,7 +458,7 @@ ggsave(paste0(here::here(), "/results/figures/supporting/king_map.pdf"), width =
 
 # Plot correlation
 bb_cor <-
-  readRDS(paste0(here::here(), "/results/2024-08-07_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -476,7 +473,7 @@ bb_cor <-
   )
 
 ebs_cor <-
-  readRDS(paste0(here::here(), "/results/2024-09-24_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X")) |>
   filter(species %in%
     filter(ebs, `Diffusion\nfavoured` == "Y")$X) |>

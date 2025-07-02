@@ -21,13 +21,22 @@ root_dir <- here::here(".")
 ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
-ebs <- read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP/Results_cz.csv")) |>
+ebs <- read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
 
+options(scipen=999)
+ebs |>
+  arrange(deltaCAIC) |>
+  dplyr::select(X, deltaCAIC, deltaAIC, range, ln_kappa2)
+
+ebs |>
+  arrange(deltaAIC) |>
+  dplyr::select(X, deltaCAIC, deltaAIC, range, ln_kappa2)
+
 # Breeding bird case
-bb <- read.csv(paste0(root_dir, "/results/2025-06-26_LNP/Results_cz.csv")) |>
+bb <- read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -49,14 +58,19 @@ dd2 <- dd |>
          test = ifelse(deltaAIC > 2 & deltaCAIC < 2, "ΔmAIC > 2 & ΔcAIC < 2", test),
          test = ifelse(deltaAIC < 2 & deltaCAIC > 2, "ΔmAIC < 2 & ΔcAIC > 2", test))
 
-dd2 <- dd2 |>
-  filter(cAIC_mAIC_diff > -500 & cAIC_mAIC_diff < 500)
+dd2 |> arrange(deltaCAIC)
+
+# dd2 <- dd2 |>
+#   filter(cAIC_mAIC_diff > -500 & cAIC_mAIC_diff < 500)
 
 dd2 |>
   summarise(n = n(), .by = c(case, test))
 
-dd2 |> filter(deltaAIC > 2) |> nrow()
-dd2 |> filter(deltaCAIC > 2) |> nrow()
+dd2 |> filter(case == "Eastern Bering sea fishes") |> filter(deltaAIC > 2) |> nrow()
+dd2 |> filter(case == "Breeding bird survey") |> filter(deltaAIC > 2) |> nrow()
+
+dd2 |> filter(case == "Eastern Bering sea fishes") |> filter(deltaCAIC > 2) |> nrow()
+dd2 |> filter(case == "Breeding bird survey") |> filter(deltaCAIC > 2) |> nrow()
 
 dd2 |>
   summarise(n = length(unique(abb_name)), .by = case)
@@ -68,6 +82,10 @@ ggplot(dd2, aes(cAIC_mAIC_diff, reorder(abb_name, desc(cAIC_mAIC_diff)), color =
   labs(x = "ΔmAIC - ΔcAIC", y = "Species") +
   guides(color = guide_legend(ncol = 1)) +
   facet_wrap(~case, scales = "free", ncol = 2) +
+  scale_x_continuous(
+    trans = "fourth_root_power",
+    breaks = c(-2, 0, 2, 40, 80, 120)
+  ) +
   scale_color_brewer(palette = "Dark2") +
   theme(
     axis.text.y = element_markdown(),
