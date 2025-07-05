@@ -733,7 +733,7 @@ p <- ggplot(pars_df, aes(`Estimation model`, est, fill = sigma_eta, color = sigm
     data = true, aes(yintercept = value),
     alpha = 0.6, linetype = 2
   ) +
-  labs(fill = c(expression(paste("Observation error SD, ", sigma[eta])))) +
+  labs(fill = c(expression(paste("Overdispersion, ", sigma[eta])))) +
   facet_wrap(~`Operating model`, ncol = 2, scales = "free") +
   scale_color_manual(values = pal, name = "") +
   scale_fill_manual(values = pal) +
@@ -820,15 +820,4 @@ tag_facet(p, fontface = 1, size = 3.5)
 ggsave(paste0(here::here(), "/results/figures/sims_beta_kappa.pdf"),
   width = 20, height = 11, unit = "cm", device = cairo_pdf
 )
-```
-
-```{r}
-# FIXME
-# How important is:
-
-# iter: 1  Error in iterate(par) :
-#   Newton dropout because inner gradient had non-finite components.
-# In addition: Warning message:
-# In nlminb(start = Obj_diff$par, obj = Obj_diff$fn, grad = Obj_diff$gr,  :
-#   NA/NaN function evaluation
 ```
