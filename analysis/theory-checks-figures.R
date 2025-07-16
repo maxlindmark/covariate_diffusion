@@ -33,11 +33,16 @@ sum_list <- list()
 # Using IID normal deviates. Hold this constant across kappas
 vec2 <- rnorm(mesh$n)
 
-for (i in c("0", "2.5", "5")) {
+for (i in c("1", "2.5", "5")) {
   ln_kappa <- as.numeric(i)
   ln_tau <- log(1 / (1 + exp(2 * ln_kappa)))
 
-  invD <- exp(ln_tau) * invM0 %*% (spde$c0 + exp(2 * ln_kappa) * spde$c0 + spde$g1)
+  # OLD VERSION
+  #invD = exp(ln_tau) * invM0 %*% (spde$c0 + exp(2*ln_kappa)*spde$c0 + spde$g1)
+
+  # UPDATED VERSION
+  invD = Diagonal(n=mesh$n) + exp(-2 * ln_kappa) * invM0 %*% spde$g1
+
   D <- solve(invD)
 
   which_mid <- which.min(rowSums(scale(mesh$loc[, 1:2])^2))
@@ -116,10 +121,10 @@ stuff2 <- stuff |>
   )
 
 p <- ggplot() +
-  facet_wrap(~ factor(kappa, levels = c("Original", "log(κ)=5", "log(κ)=2.5", "log(κ)=0")),
+  facet_wrap(~ factor(kappa, levels = c("Original", "log(κ)=5", "log(κ)=2.5", "log(κ)=1")),
     ncol = 4
   ) +
-  facet_wrap(~ factor(kappa, levels = c("Original", "log(κ)=5", "log(κ)=2.5", "log(κ)=0")),
+  facet_wrap(~ factor(kappa, levels = c("Original", "log(κ)=5", "log(κ)=2.5", "log(κ)=1")),
     ncol = 4
   ) +
   scale_fill_viridis(name = "Scaled\ncovariate", option = "G") +
@@ -194,7 +199,10 @@ run <- function(n) {
   # Create inverse-D matrix
   ln_kappa <- log(5)
   ln_tau <- log(1 / (1 + exp(2 * ln_kappa)))
-  invD <- exp(ln_tau) * invM0 %*% (spde$c0 + exp(2 * ln_kappa) * spde$c0 + spde$g1)
+  # OLD
+  #invD <- exp(ln_tau) * invM0 %*% (spde$c0 + exp(2 * ln_kappa) * spde$c0 + spde$g1)
+  # UPDATED
+  invD = Diagonal(n=mesh$n) + exp(-2 * ln_kappa) * invM0 %*% spde$g1
   x <- rnorm(mesh$n)
   # Do benchmark
   f1 <- function() solve(invD, x)
