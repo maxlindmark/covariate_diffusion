@@ -49,8 +49,17 @@ Type objective_function<Type>::operator() ()
   if(method == "diffusion"){
     PARAMETER(ln_kappa2);
     Eigen::SparseLU< Eigen::SparseMatrix<Type>, Eigen::COLAMDOrdering<int> > lu;
-    Eigen::SparseMatrix<Type> invD = invM0 * (M0 + exp(2*ln_kappa2)*M0 + M1) /
-      (1.0 + exp(2*ln_kappa2)); // Denominator corrects for proportionality constant
+
+    // OLD ONE
+    //Eigen::SparseMatrix<Type> invD = invM0 * (M0 + exp(2*ln_kappa2)*M0 + M1) /
+    //  (1.0 + exp(2*ln_kappa2)); // Denominator corrects for proportionality constant
+
+    // UPDATED ONE
+    //  Diagonal(n=mesh$n) + exp(-2 * ln_kappa) * invM0 %*% spde$g1
+    Eigen::SparseMatrix<Type> I_ss( pop_dens_s.size(), pop_dens_s.size() );
+    I_ss.setIdentity();
+    Eigen::SparseMatrix<Type> invD = I_ss + exp(-2.0 * ln_kappa2) * (invM0 * M1);
+
     lu.compute(invD);
     REPORT(invD);
 
