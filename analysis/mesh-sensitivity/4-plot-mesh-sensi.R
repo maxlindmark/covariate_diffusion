@@ -18,19 +18,22 @@ ebs_names <-
 
 # Read data
 ebs <-
-  read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_main_cutoff/main_mesh_Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_main_cutoff/main_mesh_Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-16_identity_LNP_main_cutoff/main_mesh_Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
 
 ebs_high <-
-  read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_high_cutoff/high_mesh_Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_high_cutoff/high_mesh_Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-16_identity_LNP_high_cutoff/high_mesh_Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
 
 ebs_low <-
-  read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_low_cutoff/low_mesh_Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_low_cutoff/low_mesh_Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-16_identity_LNP_low_cutoff/low_mesh_Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   left_join(ebs_names, by = "X")
 
@@ -80,7 +83,10 @@ ddlong <- dd |>
 
 ddlong |>
   distinct(abb_name, .keep_all = TRUE) |>
-  summarise(n = n(), .by = test)
+  as.data.frame() |>
+  summarise(n = n(), .by = test) |>
+  pivot_wider(values_from = n, names_from = test) |>
+  mutate(prop = Yes / (Yes + No))
 
 ggplot(ddlong, aes(value, factor(abb_name, levels = order), shape = name, color = test)) +
   geom_vline(xintercept = c(-2, 2), alpha = 0.5, linetype = 2, linewidth = 0.35) +

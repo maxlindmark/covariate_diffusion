@@ -23,7 +23,8 @@ ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
 ebs <-
-  read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-14_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
@@ -36,7 +37,8 @@ ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
 
 # Breeding bird case
 bb <-
-  read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
+  #read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-14_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -53,6 +55,7 @@ dd <- bind_rows(
 ebs |> nrow()
 ebs |> filter(deltaAIC > 2) |> nrow()
 ebs |> filter(deltaCAIC > 2) |> nrow()
+length(unique(ebs$sc_name))
 
 p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_corr)) +
   geom_rect(aes(xmin = 2, xmax = Inf, ymin = -Inf, ymax = Inf),
@@ -88,7 +91,8 @@ ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, he
 source(file.path(root_dir, "functions/bb-map-plot.R"))
 
 bb_stuff <-
-  readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
+  #readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-07-14_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -177,14 +181,17 @@ ggsave(paste0(here::here(), "/results/figures/supporting/bb_diffused_original.pd
 source(file.path(root_dir, "functions/ebs-map-plot.R"))
 
 ebs_stuff <-
-  readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
+  #readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-07-14_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X"))
 
-sub <- ebs_stuff |> dplyr::filter(species %in% c("a_poll", "cap"))
+ebs
+
+sub <- ebs_stuff |> dplyr::filter(species %in% c("a_starry", "cap"))
 
 diff_label <- ebs |>
-  mutate(species = abb_name) |> # FIXME: use latin names
-  filter(abb_name %in% unique(sub$species)) |>
+  mutate(species = abb_name) |>
+  filter(abb_name %in% unique(sub$abb_name)) |>
   mutate(label = paste0("log(\u03BA)=", round(ln_kappa2, digits = 2)))
 
 # Main plot
@@ -214,7 +221,7 @@ p1 <- mp_ebs_s +
   annotate("text", label = "Bering\nSea", x = -176, y = 65, color = "gray50", size = 2.8)
 
 p2a <- mp_ebs_s +
-  geom_sf(data = sub |> filter(species == "a_poll"), aes(fill = diffused, color = diffused), linewidth = 0.01) +
+  geom_sf(data = sub |> filter(species == "a_starry"), aes(fill = diffused, color = diffused), linewidth = 0.01) +
   theme(
     axis.text = element_blank(),
     axis.title = element_blank(),
@@ -223,7 +230,7 @@ p2a <- mp_ebs_s +
     plot.tag = element_text(color = "grey30")
   ) +
   geom_text(
-    data = diff_label |> filter(species == "a_poll"), aes(label = label),
+    data = diff_label |> filter(X == "a_starry"), aes(label = label),
     x = -158, y = 53.8, color = "grey20", size = 2.8
   ) +
   labs(
@@ -242,7 +249,7 @@ p2b <- mp_ebs_s +
     legend.position.inside = c(0.17, 0.07)
   ) +
   geom_text(
-    data = diff_label |> filter(species == "cap"), aes(label = label),
+    data = diff_label |> filter(X == "cap"), aes(label = label),
     x = -158, y = 53.8, color = "grey20", size = 2.8
   ) +
   labs(fill = NULL) +
@@ -254,7 +261,7 @@ p2 <- p2a / p2b
 
 p3a <- mp_ebs_s +
   geom_sf(
-    data = sub |> filter(species == "a_poll"),
+    data = sub |> filter(species == "a_starry"),
     aes(fill = `log(dens) diffused`, color = `log(dens) diffused`),
     linewidth = 0.01
   ) +
@@ -458,7 +465,8 @@ ggsave(paste0(here::here(), "/results/figures/supporting/king_map.pdf"), width =
 
 # Plot correlation
 bb_cor <-
-  readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
+  #readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-07-14_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -473,7 +481,8 @@ bb_cor <-
   )
 
 ebs_cor <-
-  readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
+  #readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(here::here(), "/results/2025-07-14_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X")) |>
   filter(species %in%
     filter(ebs, `Diffusion\nfavoured` == "Y")$X) |>

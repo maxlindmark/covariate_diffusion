@@ -17,7 +17,9 @@ data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
 
 # We'll fit this lower res model with optimized pars
-optimized_pars <- read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_low_cutoff/optimized_pars.csv")) |>
+optimized_pars <-
+  #read.csv(paste0(root_dir, "/results/2025-06-27_identity_LNP_low_cutoff/optimized_pars.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-16_identity_LNP_low_cutoff/optimized_pars.csv")) |>
   dplyr::rename(species_par = species)
 
 region_data_all <- read.csv(file.path(data_dir, "all_EBS_data_2021.csv"))

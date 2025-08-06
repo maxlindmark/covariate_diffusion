@@ -209,7 +209,7 @@ p_sim_diff3[names(p_sim_diff3) == "ln_sigma_eta"] <- log(2)
 
 # Decrease ln_kappa2
 p_sim_diff4 <- p_sim_diff
-p_sim_diff4[names(p_sim_diff3) == "ln_kappa2"] <- 0
+p_sim_diff4[names(p_sim_diff3) == "ln_kappa2"] <- 1
 
 # Increase ln_kappa2 more
 p_sim_diff5 <- p_sim_diff
@@ -246,7 +246,7 @@ p_sim_null3[names(p_sim_null3) == "ln_sigma_eta"] <- log(2)
 Now loop through each simulation index and simulate data given different parameters and operating models.
 
 ```{r simulate data}
-set.seed(99)
+set.seed(68)
 n_sim <- 200
 
 sim_dat <- function(obj = obj, par = par, operating_model = NA,
@@ -767,15 +767,10 @@ true <- tibble(
   par = c("beta[j1]")
 )
 
-# TODO: perhaps I wanted to swap so top row is " ... diffusion" and bottom row is kappa, but then I need to manually set the factor
-# levels in the fact, which messes up tag_facet...
-
-# pars_df_kappa |> distinct(ln_kappa2, ln_sigma_eta)
-
 pars_df_kappa2 <- pars_df_kappa |>
   filter(par == "beta[j1]" & ln_sigma_eta == 0) |>
   mutate(
-    ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 1, "log(\u03BA) = 1\nHigh diffusion", ln_kappa2),
     ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
     ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2)
   )
@@ -790,7 +785,7 @@ aic_df_kappa_sum <- aic_df_kappa |>
   ) |>
   mutate(count_prop = round(count / n_sim, digits = 2)) |>
   mutate(
-    ln_kappa2 = ifelse(ln_kappa2 == 0, "log(\u03BA) = 0\nHigh diffusion", ln_kappa2),
+    ln_kappa2 = ifelse(ln_kappa2 == 1, "log(\u03BA) = 1\nHigh diffusion", ln_kappa2),
     ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
     ln_kappa2 = ifelse(ln_kappa2 == 5, "log(\u03BA) = 5\nLow diffusion", ln_kappa2)
   ) |>
@@ -820,4 +815,25 @@ tag_facet(p, fontface = 1, size = 3.5)
 ggsave(paste0(here::here(), "/results/figures/sims_beta_kappa.pdf"),
   width = 20, height = 11, unit = "cm", device = cairo_pdf
 )
+
+# testing
+ggplot(pars_df_kappa2, aes(`Estimation model`, est)) +
+  #geom_jitter(alpha = 0.15, shape = 21, color = "white", fill = "grey10", size = 2, height = 0, width = 0.1) +
+  stat_halfeye(alpha = 0.8, color = NA) +
+  stat_pointinterval(color = "grey20") +
+  labs(y = "Estimated depth coefficient", x = "Estimation model") +
+  geom_hline(
+    data = true, aes(yintercept = value),
+    alpha = 0.6, linetype = 2
+  ) +
+  geom_text(data = aic_df_kappa_sum, aes(label = count_prop), size = 3.5, color = "grey30") +
+  facet_wrap(~ln_kappa2, ncol = 3, scales = "free") +
+  guides(color = "none", fill = guide_legend(position = "inside")) +
+  theme(
+    legend.position.inside = c(0.07, 0.93),
+    strip.text.x.top = element_text(size = 10, margin = unit(rep(0.08, 4), "cm"))
+  )
 ```
+
+
+

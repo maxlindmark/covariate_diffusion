@@ -21,10 +21,14 @@ root_dir <- here::here(".")
 ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
-ebs <- read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
+ebs <-
+  #read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-14_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
+
+ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
 
 options(scipen=999)
 ebs |>
@@ -36,7 +40,9 @@ ebs |>
   dplyr::select(X, deltaCAIC, deltaAIC, range, ln_kappa2)
 
 # Breeding bird case
-bb <- read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
+bb <-
+  #read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-07-14_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -75,7 +81,11 @@ dd2 |> filter(case == "Breeding bird survey") |> filter(deltaCAIC > 2) |> nrow()
 dd2 |>
   summarise(n = length(unique(abb_name)), .by = case)
 
-ggplot(dd2, aes(cAIC_mAIC_diff, reorder(abb_name, desc(cAIC_mAIC_diff)), color = test)) +
+dd2 |> filter(is.na(cAIC_mAIC_diff))
+
+dd2 |>
+  drop_na(cAIC_mAIC_diff) |>
+  ggplot(aes(cAIC_mAIC_diff, reorder(abb_name, desc(cAIC_mAIC_diff)), color = test)) +
   geom_vline(xintercept = c(-2, 2), alpha = 0.5, linetype = 2, linewidth = 0.35) +
   geom_vline(xintercept = 0, alpha = 0.3, linetype = 1, linewidth = 0.35) +
   geom_point(size = 2.3) +
@@ -84,7 +94,7 @@ ggplot(dd2, aes(cAIC_mAIC_diff, reorder(abb_name, desc(cAIC_mAIC_diff)), color =
   facet_wrap(~case, scales = "free", ncol = 2) +
   scale_x_continuous(
     trans = "fourth_root_power",
-    breaks = c(-2, 0, 2, 40, 80, 120)
+    breaks = c(-2, 0, 2, 50, 250)
   ) +
   scale_color_brewer(palette = "Dark2") +
   theme(
