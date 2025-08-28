@@ -1,0 +1,443 @@
+---
+title: "Fitting a covariate diffusion model"
+author: "Max Lindmark, Sean C. Anderson, James Thorson"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: 
+  html:
+    embed-resources: true
+    fig-width: 8
+    #fig-asp: 0.618
+knitr: 
+  opts_chunk:
+    fig.align: center
+editor: source
+execute: 
+  echo: true
+  eval: true
+  cache: false
+---
+
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyr)
+library(viridis)
+library(patchwork)
+library(sf)
+library(Matrix)
+library(TMB)
+library(rnaturalearth)
+library(terra)
+library(fmesher)
+library(ggplot2)
+theme_set(theme_light())
+library(RCurl)
+```
+
+In this vignette, we walk through all the steps to prepare data for a diffusion model, fit it with the R-package TMB (Kristensen et al., 2016), and lastly visualize the diffused covariate. A "diffusion model" here refers to a model where a sparse inverse diffusion operator is applied to covariate(s) to calculate a spatially weighted average of local habitat (Lindmark, Anderson \& Thorson, 2025). This vignette is mainly to showcase the workflow; for technical details and derivations, we refer to the paper (Lindmark, Anderson \& Thorson, 2025). 
+
+In this example, we use data on capelin (*Mallotus villosus*) counts, from a fixed-station bottom trawl survey conducted in 2019 in the northeastern Bering Sea by the NOAA Alaska Fisheries Science Center.
+
+### Preparing data and SPDE matricies
+
+First we read trawl data, shapefiles and depth-rasters.
+
+```{r libs}
+#| message: false
+#| warning: false
+#| output: false
+
+# Set path
+home <- here::here()
+
+# Read trawl data from the GitHub repository
+cap <- read.csv(
+  "https://raw.githubusercontent.com/maxlindmark/covariate_diffusion/refs/heads/paper/data/all_EBS_data_2021.csv"
+) |>
+  dplyr::select(c(1:14, "cap"))
+
+# Download shapefiles and bathymetry from the repository.
+# Read, project & clean them
+shape1 <- st_read(paste0(home, "/data/EBSThorson"))
+shape2 <- st_read(paste0(home, "/data/NBSThorson"))
+domain_shape <- c(st_geometry(shape1), st_geometry(shape2))
+bdepth <- rast(paste0(home, "/data/bdepth.tif"))
+
+# Make domain from shapefile
+domain_shape <- st_geometry(domain_shape)
+domain_shape <- st_cast(domain_shape, to = "POLYGON")
+domain_shape <- st_transform(domain_shape, crs = 4326)
+domain_shape <- st_make_valid(domain_shape)
+```
+
+Now we need to convert sampling locations into an `sf` multipoint object, construct a spatial domain around those locations, and build a prediction-grid and a finite element mesh (FEM) over the domain.
+
+```{r}
+#| message: false
+#| warning: false
+
+# Convert data locations into an sf object
+# Use the same CRS as the depth-raster
+loc <- st_multipoint(as.matrix(cap[, c("lon", "lat")]), dim = "XY")
+sf_loc <- st_sfc(loc, crs = st_crs(bdepth))
+sf_loc <- st_transform(sf_loc, crs = 4326)
+
+# Build a spatial domain from data points
+domain <- st_concave_hull(sf_loc, ratio = 0.1)
+domain <- st_sfc(domain, crs = st_crs(sf_loc))
+
+# Create an evenly-spaced grid covering the extent of the domain
+# Extract centroid of each cell
+sf_grid <- st_make_grid(domain_shape, cellsize = c(0.1, 0.1))
+sf_grid <- st_intersection(sf_grid, domain_shape)
+grid_loc <- st_coordinates(st_centroid(sf_grid))
+
+# Construct a triangular mesh from the point locations
+# Cutoff is the minimum triangle edge length
+mesh <- fmesher::fm_mesh_2d(st_coordinates(sf_loc)[, 1:2], cutoff = 0.1)
+
+ggplot() +
+  geom_fm(data = mesh, fill = NA) +
+  labs(x = "Longitude", y = "Latitude")
+```
+
+Set up the SPDE objects for spatial modeling.
+
+```{r}
+# Compute finite element matrices for the SPDE approach
+spde <- fm_fem(mesh)
+# Compute projection matrices from mesh nodes to your data locations
+A_is <- fm_evaluator(mesh, loc = st_coordinates(sf_loc))$proj$A
+# Compute projection matrices from mesh nodes to your grid locations
+A_gs <- fm_evaluator(mesh, loc = grid_loc)$proj$A
+
+invM0 <- invsqrtM0 <- spde$c0
+diag(invsqrtM0) <- 1 / sqrt(diag(spde$c0))
+diag(invM0) <- 1 / diag(spde$c0)
+```
+
+This next and last bit of data preparation is what differs from a standard SPDE model.
+
+In contrast to a standard SPDE-based spatial model, where one has fixed effect covariate values for observations, a diffusion model requires covariate values at all mesh vertices. This is because the inverse-diffusion matrix operates across the entire domain. I.e., the diffusion operator $\mathbf{D}$ needs covariate values $x$ at every mesh vertex to compute the diffused covariate values $\mathbf{Dx}$, which represent the impact of nearby covariates rather than just local values.
+
+```{r}
+# Extract covariate values (depth) to the SPDE mesh nodes.
+mesh_points <- sf_project(mesh$loc[, 1:2], from = st_crs(4326), to = st_crs(bdepth))
+depth_s <- terra::extract(bdepth, mesh_points)[, 1]
+# Fill in missing covariates
+depth_s <- ifelse(is.na(depth_s), mean(depth_s, na.rm = TRUE), depth_s)
+
+# For scaling and scaling back covariate
+mean_depth_s <- mean(depth_s)
+sd_depth_s <- sd(depth_s)
+depthprime_s <- (depth_s - mean_depth_s) / sd_depth_s
+```
+
+### Fitting the model
+
+We model counts of capelin at each site using a Poisson model with an observation-level random intercept in link space to allow for additional dispersion beyond the 1:1 mean-variance of the Poisson (a lognormal Poisson), and a log link. A quadratic effect of a diffused or the raw covariate is included as a predictor (note the model below can estimate a diffusion model or standard model, depending on what the used supplies in the Data list).
+
+We use R to prepare data and parameters, create the TMB object, and run numerical optimization via `nlminb()`. The objective function, written in C++, defines how parameters and data combine to calculate the negative log-likelihood of our model. 
+
+The steps to fitting the model are:
+
+1. Write & compile C++ template
+
+2. Make a list of data objects to pass to TMB
+
+3. Make a list parameters and initial values
+
+4. Create TMB object
+
+5. Optimize model with `nlminb()`
+
+The C++ code we'll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. It also reports back predictions and marginal effects of depth, and other things.
+
+```{cpp}
+#include <TMB.hpp>
+
+// Space time
+template<class Type>
+Type objective_function<Type>::operator() ()
+{
+  using namespace density;
+
+  // Data
+  DATA_STRING(method);
+  DATA_STRING(dist);
+  DATA_VECTOR(c_i);  // counts for observation i
+  DATA_VECTOR(weights_i); // new: weights for calculating cAIC
+  DATA_VECTOR(depth_s);  // counts for observation i
+  DATA_INTEGER(sim_gmrf) // simulate GMRFs?
+
+  // SPDE objects
+  DATA_SPARSE_MATRIX(M0);
+  DATA_SPARSE_MATRIX(M1);
+  DATA_SPARSE_MATRIX(M2);
+  DATA_SPARSE_MATRIX(invsqrtM0);
+  DATA_SPARSE_MATRIX(invM0);
+
+  // Projection matrices
+  DATA_SPARSE_MATRIX(A_is);
+  DATA_SPARSE_MATRIX(A_gs);
+
+  // Parameters
+  PARAMETER(beta0);
+  PARAMETER_VECTOR(beta_j);
+  PARAMETER(ln_tau);
+  PARAMETER(ln_kappa);
+
+  // Random effects
+  PARAMETER_VECTOR(omega_s);
+
+  // Objective function
+  Type jnll = 0.0;
+
+  // Derived quantities
+  Eigen::SparseMatrix<Type> Q = (exp(4*ln_kappa)*M0 +
+    Type(2.0)*exp(2*ln_kappa)* M1 + M2) * exp(2*ln_tau);
+  jnll += GMRF(Q)(omega_s);
+
+  if (sim_gmrf) SIMULATE {GMRF(Q).simulate(omega_s);}
+
+  // Probability of random effects
+  if(method == "diffusion"){
+    PARAMETER(ln_kappa2);
+    Eigen::SparseLU< Eigen::SparseMatrix<Type>, Eigen::COLAMDOrdering<int> > lu;
+
+    Eigen::SparseMatrix<Type> I_ss( depth_s.size(), depth_s.size() );
+    I_ss.setIdentity();
+    Eigen::SparseMatrix<Type> invD = I_ss + exp(-2.0 * ln_kappa2) * (invM0 * M1);
+
+    lu.compute(invD);
+    REPORT(invD);
+
+    // Solve
+    matrix<Type> depth_sz = lu.solve(depth_s.matrix());;
+
+    depth_s = depth_sz.col(0); // turn one column matrix to vector
+
+    //Type SigmaD = 1 / sqrt(4 * M_PI * exp(2*ln_tau2) * exp(2*ln_kappa2));
+    Type Range2 = sqrt(8) / exp(ln_kappa2);
+    REPORT(Range2);
+    //REPORT(SigmaD);
+    REPORT(ln_kappa2);
+  }
+  vector<Type> depth_i = A_is * depth_s;
+  vector<Type> depth_g = A_gs * depth_s;
+  REPORT(depth_s);
+  REPORT(depth_i);
+  REPORT(depth_g);
+  vector<Type> omega_i = A_is * omega_s;
+  vector<Type> omega_g = A_gs * omega_s;
+  vector<Type> pdepth_i = depth_i*beta_j(0) + pow(depth_i,2)*beta_j(1);
+  vector<Type> pdepth_g = depth_g*beta_j(0) + pow(depth_g,2)*beta_j(1);
+
+  // Add weights here so that I can set them to 0 when calculating conditional AIC
+  vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
+  if(dist=="LNP"){
+    PARAMETER(ln_sigma_eta);
+    PARAMETER_VECTOR(eta_i);
+    for(int i=0; i<c_i.size(); i++){
+      if (weights_i(i) > Type(0.0)) {
+        jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
+        jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
+      }
+      SIMULATE {
+        if (weights_i(i) > Type(0.0)) {
+          eta_i(i) = rnorm(Type(0.0), exp(ln_sigma_eta));
+          c_i(i) = rpois(mu_i(i) * exp(eta_i(i)));
+        }
+      }
+    }
+  }
+  vector<Type> mu_g = exp(beta0 + omega_g + pdepth_g);
+
+  // Reporting
+  REPORT(Q);
+  REPORT(omega_g);
+  REPORT(mu_i);
+  REPORT(mu_g);
+  REPORT(pdepth_i);
+  REPORT(pdepth_g);
+
+  SIMULATE {
+    REPORT(c_i);
+  }
+
+  return jnll;
+}
+```
+
+We can download the .cpp file from GitHub to the working directory and compile it.
+
+```{r}
+# Download the C++ file from GitHub
+cpp_url <- "https://raw.githubusercontent.com/maxlindmark/covariate_diffusion/refs/heads/paper/tmb/movement_kernel_ebs.cpp"
+download.file(cpp_url, destfile = "movement_kernel_ebs.cpp")
+
+# Compile and load as usual
+TMB::compile("movement_kernel_ebs.cpp", framework = "TMBad")
+dyn.load(dynlib("movement_kernel_ebs"))
+```
+
+Define a list of data objects to pass to TMB.
+
+```{r}
+Data <- list(
+  "method" = "diffusion", # Use diffusion approach (see .cpp file)
+  "dist" = "LNP", # Lognormal Poisson
+  "c_i" = cap[, "cap"], # Counts of capelin
+  "weights_i" = rep(1, times = nrow(cap)), # For conditional AIC calculations
+  "A_is" = A_is, # Projection matrix (mesh to observations)
+  "A_gs" = A_gs, # Projection matrix (mesh to grid)
+  "M0" = spde$c0, # SPDE matrix
+  "M1" = spde$g1, # SPDE matrix
+  "M2" = spde$g2, # SPDE matrix
+  "invsqrtM0" = invsqrtM0, # Inverse matrix
+  "invM0" = invM0, # Inverse matrix
+  "depth_s" = depthprime_s, # Depth values at mesh vertices
+  "sim_gmrf" = 0L
+)
+```
+
+Define the parameters and assign starting values.
+
+```{r}
+Params <- list(
+  "beta0" = 0, # Intercept
+  "beta_j" = c(0.1, 0.1), # Coefficient for diffused depth effect (recall a quadratic effect)
+  "ln_tau" = 0, # Scalar of the precision matrix
+  "ln_kappa" = 0, # De-correlation rate
+  "omega_s" = rnorm(nrow(spde$c0)), # Spatial random effects (estimated at mesh vertices)
+  "ln_kappa2" = exp(-1) # Strength of the covariate diffusion
+)
+
+Params$ln_sigma_eta <- log(0.1)
+Params$eta_i <- rnorm(nrow(cap))
+Random <- c("omega_s", "eta_i")
+```
+
+Create TMB object (containing functions to calculate the objective function and its gradient.)
+
+```{r}
+Obj <- MakeADFun(
+  data = Data,
+  parameters = Params,
+  random = Random,
+  checkParameterOrder = TRUE
+)
+# Obj$env$beSilent()
+```
+
+Optimize parameters.
+
+```{r}
+#| message: false
+#| warning: false
+#| output: false
+
+# Optimize
+Opt <- nlminb(
+  start = Obj$par,
+  obj = Obj$fn,
+  grad = Obj$gr,
+  control = list(eval.max = 1e4, iter.max = 1e4, trace = 1)
+)
+Report <- Obj$report()
+```
+
+### Visualizing model output
+
+We can check our optimized parameters and their standard errors.
+
+```{r}
+# Check parameter estimates
+Opt$par
+
+# To view standard errors, run this (commented out because it is very slow)
+# sdreport(Obj)
+```
+
+Lastly, we can visualize predictions and the diffused covariate spatially.
+
+First make a little base map.
+
+```{r}
+map_data <- rnaturalearth::ne_countries(
+  scale = "medium",
+  returnclass = "sf", continent = "North America"
+)
+
+alaska <- suppressWarnings(suppressMessages(
+  st_crop(
+    map_data,
+    c(xmin = -179, ymin = 50, xmax = -150, ymax = 70)
+  )
+))
+
+map_ebs <- ggplot(alaska) +
+  geom_sf(linewidth = 0.4, color = "gray40") +
+  coord_sf(expand = FALSE) +
+  xlim(-178, -155) +
+  ylim(53, 66) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme(
+    legend.key.width = unit(0.4, "cm"),
+    legend.key.height = unit(0.2, "cm"),
+    legend.direction = "horizontal",
+    legend.position.inside = c(0.86, 0.92),
+    legend.background = element_blank()
+  ) +
+  guides(
+    fill = guide_colorbar(title.position = "top",
+                          title.hjust = 0.5, position = "inside")
+  ) +
+  scale_fill_viridis(
+    option = "mako", na.value = NA, direction = -1,
+    breaks = scales::pretty_breaks(n = 2), name = "Depth",
+  ) +
+  annotate("text", label = "Bering\nSea", x = -177, y = 65,
+           color = "gray50", size = 2.8)
+```
+
+Next gather predictions in a sf data frame.
+
+```{r}
+#| message: false
+#| warning: false
+
+stuff_gz <- st_sf(sf_grid,
+  "original" = as.vector(Data$A_gs %*% Data$depth_s),
+  "diffused" = Report$depth_g
+  )
+```
+
+Below we see how the diffused covariate is "smeared" out in space, with the total covariate "mass" conserved.
+
+```{r}
+#| message: false
+#| warning: false
+
+p1 <- map_ebs +
+  geom_sf(data = stuff_gz, aes(fill = original), linewidth = 0.01) +
+  geom_sf(linewidth = 0.4, color = "gray40") +
+  facet_wrap(~"Original depth")
+
+p2 <- map_ebs +
+  geom_sf(data = stuff_gz, aes(fill = diffused), linewidth = 0.01) +
+  geom_sf(linewidth = 0.4, color = "gray40") +
+  facet_wrap(~"Diffused depth") +
+  scale_fill_viridis(
+    option = "mako", na.value = NA, direction = -1,
+    breaks = c(-0.4, 0, 0.4), name = "Depth",
+  )
+
+(p1 + p2) & plot_layout(axis_titles = "collect_y", axes = "collect_y")
+```
+
+## References
+Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M. (2016). TMB: Automatic Differentiation and Laplace Approximation. Journal of Statistical Software, 70(1), Article 1. <https://doi.org/10.18637/jss.v070.i05>
+
+Lindmark, M., Anderson, S. C., & Thorson, J. T. (2025). Estimating scale-dependent covariate responses using two-dimensional diffusion derived from the SPDE method (p. 2024.12.17.628864). bioRxiv. <https://doi.org/10.1101/2024.12.17.628864>
