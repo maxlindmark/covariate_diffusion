@@ -6,6 +6,7 @@ format:
   html:
     embed-resources: true
     fig-width: 8
+    toc: true
     #fig-asp: 0.618
 knitr: 
   opts_chunk:
