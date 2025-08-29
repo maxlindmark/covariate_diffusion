@@ -9,11 +9,9 @@ To reproduce our results you can either:
 
 2. Download a zip and work locally on your computer
 
-In this project we use [`renv`](https://rstudio.github.io/renv/articles/renv.html) to manage package versions.
+We use [`renv`](https://rstudio.github.io/renv/articles/renv.html) to manage package versions. Once you've downloaded the project, run `renv::restore()` in your current working directory. This will install the package versions we used when this repository was archived. Note that packages are installed in a stand-alone project library for this paper, and will not affect your installed R packages anywhere else! `renv` does *not* help with different versions of R. We used R version 4.3.2, and ran the analysis on a 24 GB Apple M2 Sequoia 15.6.1 laptop.
 
-Once you've downloaded the project, run `renv::restore()` in your current working directory. This will install the package versions we used when this repository was archived. Note that packages are installed in a stand-alone project library for this paper, and will not affect your installed R packages anywhere else! `renv` does *not* help with different versions of R. We used R version 4.3.2, and ran the analysis on a 24 GB Apple M2 Sequoia 15.6.1 laptop.
-
-If you are more interested in a simple example of the steps required to fit a diffusion model than to reproduce the results in the paper, we made a short [vignette](https://maxlindmark.github.io/covariate_diffusion/) demonstrating a typical workflow with a minimal example on capelin.
+If you are more interested in a simple example of the steps to fit a diffusion model than reproducing our results in the paper, we made a short [vignette](https://maxlindmark.github.io/covariate_diffusion/) demonstrating a typical workflow with a minimal example on capelin.
 
 ### Repository structure
 
@@ -30,7 +28,4 @@ If you are more interested in a simple example of the steps required to fit a di
 `timing`: code to test timing of fitting diffused vs standard model, and to calculate \(\mathbf{D}^{-1}\mathbf{x}\) using either sparse LU decomposition or constructing the dense matrix
 
 `tmb`: .cpp files for all models (case studies, simulation)
-
-Once you've successfully run `renv::restore()` you can reproduce our results by running sala-etal-food-reply.Rmd. This will knit the reply stored in sala-etal-food-reply.Rmd.
-
 
