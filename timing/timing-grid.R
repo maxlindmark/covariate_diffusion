@@ -1,6 +1,4 @@
-# Timing figure -----------------------------------------------------------
-
-# This is a trimmed copy of Sean's sdmTMB paper code for only sdmTMB. Next I will modify this to work with TMB...
+# Code to run comparison of time in seconds to estimate parameters and to calculate standard errors for a diffused model, and a non-diffused model
 
 library(sf)
 library(fmesher)
@@ -11,7 +9,7 @@ library(ggplot2)
 library(ggsidekick)
 theme_set(theme_sleek())
 
-# Code to simulate spatially structured data based on https://github.com/seananderson/sdmTMB-paper/blob/main/analysis/timing.R
+# Code to simulate spatially structured data based on sdmTMB paper: https://github.com/seananderson/sdmTMB-paper/blob/main/analysis/timing.R
 
 # Function to simulate data
 simulate_dat <- function(n_obs = 100,
@@ -243,7 +241,6 @@ fit_out |>
          ratio_sdreport = diffused_sdreport / standard_sdreport) |>
   tidyr::pivot_longer(c(ratio_nlminb, ratio_sdreport)) |>
   mutate(mean = mean(value), .by = c(name, n)) |>
-  #mutate(Diffused = grepl("nlminb", name)) |>
   mutate(type = ifelse(grepl("nlminb()", name), "nlminb", "sdreport()")) |>
   mutate(n_text = paste0("n = ", n)) |>
   ggplot(aes(knots, value)) +

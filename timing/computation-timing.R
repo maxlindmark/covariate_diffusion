@@ -1,4 +1,4 @@
-# FROM: C:\Users\James.Thorson\Desktop\Work files\Collaborations\2024 -- movement kernel for covariates\Old code\covariate_diffusion_2024-02-05.R
+# Code to test timing of compute D^(−1)x using a sparse LU decomposition or by constructing the dense matrix D (green) given number of sites (x-axis)
 
 library(fmesher)
 library(Matrix)
@@ -12,9 +12,7 @@ library(patchwork)
 
 set.seed(194301)
 
-################
 # Time-scaling
-################
 run <- function(n) {
   cat(n, "\n")
   # Simulate locations
@@ -27,9 +25,6 @@ run <- function(n) {
   # Create inverse-D matrix
   ln_kappa <- log(5)
   ln_tau <- log(1 / (1 + exp(2 * ln_kappa)))
-  # OLD
-  #invD <- exp(ln_tau) * invM0 %*% (spde$c0 + exp(2 * ln_kappa) * spde$c0 + spde$g1)
-  # UPDATED
   invD = Diagonal(n=mesh$n) + exp(-2 * ln_kappa) * invM0 %*% spde$g1
   x <- rnorm(mesh$n)
   # Do benchmark
@@ -38,7 +33,6 @@ run <- function(n) {
   bench::mark(f1(), f2(), check = FALSE)
 }
 
-#size <- c(10, 100, 200, 500, 1000, 2000)
 size <- seq(1, 2000, by = 10)
 
 b <- lapply(size, run)
