@@ -74,8 +74,7 @@ compile("timing/covariate_diffusion.cpp", framework = "TMBad")
 dyn.load(dynlib("timing/covariate_diffusion"))
 
 fit_models <- function(sim_object) {
-  # compile("timing/simple.cpp", framework = "TMBad")
-  # dyn.load(dynlib("timing/simple"))
+
   s <- sim_object
 
   distribution <- c("Tweedie", "Poisson", "LNP")[2]
