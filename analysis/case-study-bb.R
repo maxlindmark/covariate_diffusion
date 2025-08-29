@@ -1,5 +1,5 @@
-#setwd(R'(C:\Users\James.Thorson\Desktop\Git\covariate_diffusion)')
-#root_dir = getwd()
+# Code to run breeding bird case study and store output in "results"
+
 root_dir <- here::here(".")
 data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
@@ -9,7 +9,7 @@ tmb_dir <- file.path(root_dir, "tmb")
 source(file.path(root_dir, "functions/add-legend.R"))
 source(here::here("analysis/prep-bb-data.R"))
 # source conditional AIC function
-source(here::here("analysis/mod-cAIC.R"))
+source(here::here("functions/mod-cAIC.R"))
 
 # Compile
 setwd(tmb_dir)
@@ -22,7 +22,6 @@ species_set <- colnames(sf_DF)[3:22]
 sf_DF <- as.data.frame(sf_DF)
 
 param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
-#param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_pop_dens")
 Results_cz <- array(NA,
   dim = c(length(species_set), length(param_set)),
   dimnames = list(species_set, param_set)

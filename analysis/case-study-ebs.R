@@ -1,3 +1,5 @@
+# Code to run eastern Bering sea case study and store output in "results"
+
 root_dir <- here::here(".")
 data_dir <- file.path(root_dir, "data")
 tmb_dir <- file.path(root_dir, "tmb")
@@ -7,7 +9,7 @@ tmb_dir <- file.path(root_dir, "tmb")
 source(file.path(root_dir, "functions/add-legend.R"))
 source(here::here("analysis/prep-ebs-data.R"))
 # source conditional AIC function
-source(here::here("analysis/mod-cAIC.R"))
+source(here::here("functions/mod-cAIC.R"))
 
 # Compile
 setwd(tmb_dir)
@@ -18,6 +20,10 @@ dyn.load(dynlib("movement_kernel_ebs"))
 species_set <- colnames(region_data_all)[30:ncol(region_data_all)]
 N_c <- colSums(ifelse(region_data_all[, species_set] > 0, 1, 0))
 species_set <- species_set[N_c > 1000]
+
+# cI <- 26
+# This species has a non positive definite Hessian, so it throws an error when doing sdreport!
+species_set <- species_set[-26]
 
 param_set <- c("obj_diffusion", "obj_null", "deltaCAIC", "deltaAIC", "range", "ln_kappa2", "corr_depth")
 #param_set <- c("obj_diffusion", "obj_null", "deltaAIC", "range", "ln_kappa2", "corr_depth")
@@ -34,10 +40,6 @@ mean_depth_s <- mean(depth_s)
 sd_depth_s <- sd(depth_s)
 
 # Loop
-# cI <- 26
-# This species has a non positive definite Hessian, so it throws an error when doing sdreport!
-species_set <- species_set[-26]
-
 for (cI in seq_along(species_set)) {
   species <- species_set[cI]
 

@@ -1,3 +1,5 @@
+# Script to produce a supporting figure showing difference between marginal and conditional AIC
+
 # Load libraries
 library(tidyr)
 library(dplyr)
@@ -22,7 +24,6 @@ ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
 ebs <-
-  #read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
   read.csv(paste0(root_dir, "/results/2025-07-14_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>

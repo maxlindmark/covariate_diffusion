@@ -15,16 +15,15 @@ library(ggrepel)
 library(egg)
 library(stringr)
 
-root_dir <- here::here(".")
+home <- here::here("")
 
 ### Plot results from the case studies
 # Read data
-ebs_names <- read_csv(paste0(root_dir, "/data/clean_EBS_species.csv")) |>
+ebs_names <- read_csv(paste0(home, "/data/clean_EBS_species.csv")) |>
   dplyr::select(X, abb_name, sc_name, common_name2)
 
 ebs <-
-  #read.csv(paste0(root_dir, "/results/2025-06-28_identity_LNP/Results_cz.csv")) |>
-  read.csv(paste0(root_dir, "/results/2025-07-14_identity_LNP/Results_cz.csv")) |>
+  read.csv(paste0(home, "/results/2025-08-28_identity_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
@@ -32,13 +31,12 @@ ebs <-
 ebs |> distinct(abb_name) |> arrange()
 
 # This species is now NA...
-#ebs |> filter(abb_name == "<i>P. camtschaticus</i> (Bb)")
+ebs |> filter(abb_name == "<i>P. camtschaticus</i> (Bb)")
 ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
 
 # Breeding bird case
 bb <-
-  #read.csv(paste0(root_dir, "/results/2025-06-28_LNP/Results_cz.csv")) |>
-  read.csv(paste0(root_dir, "/results/2025-07-14_LNP/Results_cz.csv")) |>
+  read.csv(paste0(root_dir, "/results/2025-08-28_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -83,7 +81,7 @@ p <- ggplot(dd, aes(deltaAIC, reorder(abb_name, desc(deltaAIC)), fill = covar_co
 
 tag_facet(p, fontface = 1, size = 3.5, hjust = -9.5)
 
-ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, height = 19, unit = "cm", device = cairo_pdf)
+ggsave(paste0(home, "/results/figures/case_summary.pdf"), width = 17, height = 19, unit = "cm", device = cairo_pdf)
 
 
 # Plot maps from the case studies
@@ -91,8 +89,7 @@ ggsave(paste0(here::here(), "/results/figures/case_summary.pdf"), width = 17, he
 source(file.path(root_dir, "functions/bb-map-plot.R"))
 
 bb_stuff <-
-  #readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
-  readRDS(paste0(here::here(), "/results/2025-07-14_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(home, "/results/2025-08-28_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -166,7 +163,7 @@ p3 <- mp_bb_s +
   plot_layout(widths = c(1, 1, 1)) &
   theme(plot.tag = element_text(size = 11))
 
-ggsave(paste0(here::here(), "/results/figures/bb_maps.pdf"), width = 20, height = 16, unit = "cm", device = cairo_pdf)
+ggsave(paste0(home, "/results/figures/bb_maps.pdf"), width = 20, height = 16, unit = "cm", device = cairo_pdf)
 
 
 # Supporting info plot
@@ -174,18 +171,17 @@ mp_bb_fc +
   geom_sf(data = bb_stuff, aes(fill = diffused - orig), color = NA) +
   labs(fill = "Difference between diffused and original covariate")
 
-ggsave(paste0(here::here(), "/results/figures/supporting/bb_diffused_original.pdf"), width = 22, height = 23, unit = "cm")
+ggsave(paste0(home, "/results/figures/supporting/bb_diffused_original.pdf"), width = 22, height = 23, unit = "cm")
 
 
 # EBS map plots
 source(file.path(root_dir, "functions/ebs-map-plot.R"))
 
 ebs_stuff <-
-  #readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
-  readRDS(paste0(here::here(), "/results/2025-07-14_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(home, "/results/2025-08-28_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X"))
 
-ebs
+str(ebs)
 
 sub <- ebs_stuff |> dplyr::filter(species %in% c("a_starry", "cap"))
 
@@ -302,7 +298,7 @@ p3 <- p3a / p3b
   plot_layout(widths = c(1, 1, 1)) &
   theme(plot.tag = element_text(size = 11))
 
-ggsave(paste0(here::here(), "/results/figures/ebs_maps.pdf"), width = 20, height = 16, unit = "cm", device = cairo_pdf)
+ggsave(paste0(home, "/results/figures/ebs_maps.pdf"), width = 20, height = 16, unit = "cm", device = cairo_pdf)
 
 # Plotting correlations between omega
 king <- ebs_stuff |> dplyr::filter(species %in% c("rking"))
@@ -461,12 +457,11 @@ p3 <- p3a / p3b
 (p1 | p2 | p3) +
   theme(plot.tag = element_text(size = 11))
 
-ggsave(paste0(here::here(), "/results/figures/supporting/king_map.pdf"), width = 20, height = 16, unit = "cm")
+ggsave(paste0(home, "/results/figures/supporting/king_map.pdf"), width = 20, height = 16, unit = "cm")
 
 # Plot correlation
 bb_cor <-
-  #readRDS(paste0(here::here(), "/results/2025-06-28_LNP/stuff_gz_df.rds")) |>
-  readRDS(paste0(here::here(), "/results/2025-07-14_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(home, "/results/2025-08-28_LNP/stuff_gz_df.rds")) |>
   separate(species, "_", into = c("family", "sp"), remove = FALSE) |>
   mutate(
     abb_name = substring(family, 1, 1),
@@ -481,8 +476,7 @@ bb_cor <-
   )
 
 ebs_cor <-
-  #readRDS(paste0(here::here(), "/results/2025-06-28_identity_LNP/stuff_gz_df.rds")) |>
-  readRDS(paste0(here::here(), "/results/2025-07-14_identity_LNP/stuff_gz_df.rds")) |>
+  readRDS(paste0(home, "/results/2025-08-28_identity_LNP/stuff_gz_df.rds")) |>
   left_join(ebs_names, by = c("species" = "X")) |>
   filter(species %in%
     filter(ebs, `Diffusion\nfavoured` == "Y")$X) |>
@@ -533,7 +527,7 @@ p2 <- cor |>
   plot_annotation(tag_levels = "a", tag_suffix = ")", tag_prefix = "(") +
   plot_layout(guides = "collect")
 
-ggsave(paste0(here::here(), "/results/figures/supporting/correlations.pdf"), width = 20, height = 9, unit = "cm")
+ggsave(paste0(home, "/results/figures/supporting/correlations.pdf"), width = 20, height = 9, unit = "cm")
 
 
 # Test plotting a few cases where AIC favours diffusion but the correlation is 1
@@ -581,4 +575,4 @@ mp_ebs_fc +
   geom_sf(linewidth = 0.4, color = "gray40") +
   guides(color = "none")
 
-ggsave(paste0(here::here(), "/results/figures/supporting/ebs_partial.pdf"), width = 20, height = 18, unit = "cm")
+ggsave(paste0(home, "/results/figures/supporting/ebs_partial.pdf"), width = 20, height = 18, unit = "cm")
