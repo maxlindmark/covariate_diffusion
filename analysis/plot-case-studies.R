@@ -32,7 +32,7 @@ ebs <-
 
 # Breeding bird case
 bb <-
-  read.csv(paste0(root_dir, "/results/2025-08-28_LNP/Results_cz.csv")) |>
+  read.csv(paste0(home, "/results/2025-08-28_LNP/Results_cz.csv")) |>
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_pop_dens) |>
   separate(X, "_", into = c("family", "species")) |>
@@ -82,7 +82,7 @@ ggsave(paste0(home, "/results/figures/case_summary.pdf"), width = 17, height = 1
 
 # Plot maps from the case studies
 # BB
-source(file.path(root_dir, "functions/bb-map-plot.R"))
+source(file.path(home, "functions/bb-map-plot.R"))
 
 bb_stuff <-
   readRDS(paste0(home, "/results/2025-08-28_LNP/stuff_gz_df.rds")) |>
@@ -171,7 +171,7 @@ ggsave(paste0(home, "/results/figures/supporting/bb_diffused_original.pdf"), wid
 
 
 # EBS map plots
-source(file.path(root_dir, "functions/ebs-map-plot.R"))
+source(file.path(home, "functions/ebs-map-plot.R"))
 
 ebs_stuff <-
   readRDS(paste0(home, "/results/2025-08-28_identity_LNP/stuff_gz_df.rds")) |>
