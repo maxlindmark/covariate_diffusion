@@ -1,3 +1,5 @@
+# Script to make main and supporting figures for case studies
+
 # Load libraries
 library(tidyr)
 library(dplyr)
@@ -27,12 +29,6 @@ ebs <-
   mutate("Diffusion\nfavoured" = ifelse(deltaAIC < 0, "N", "Y")) |>
   rename(covar_corr = corr_depth) |>
   left_join(ebs_names, by = "X")
-
-ebs |> distinct(abb_name) |> arrange()
-
-# This species is now NA...
-ebs |> filter(abb_name == "<i>P. camtschaticus</i> (Bb)")
-ebs <- ebs |> filter(!abb_name == "<i>P. camtschaticus</i> (Bb)")
 
 # Breeding bird case
 bb <-
