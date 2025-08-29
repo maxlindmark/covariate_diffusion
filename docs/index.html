@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Max Lindmark, Sean C. Anderson, James Thorson">
-<meta name="dcterms.date" content="2025-08-28">
+<meta name="dcterms.date" content="2025-08-29">
 
 <title>Fitting a covariate diffusion model</title>
 <style>
@@ -3106,7 +3106,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">August 28, 2025</p>
+      <p class="date">August 29, 2025</p>
     </div>
   </div>
   
@@ -3233,55 +3233,55 @@ vertical-align: -.125em;
 <li><p>Create TMB object</p></li>
 <li><p>Optimize model with <code>nlminb()</code></p></li>
 </ol>
-<p>The C++ code we’ll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. It also reports back predictions and marginal effects of depth, and other things.</p>
+<p>The C++ code we’ll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. The following chunk writes the .cpp file to a folder called “tmb” in your home directory. It is a slightly trimmed down version of the .cpp <a href="https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb">files used in the paper</a>, which allow for different distributions, simulating from the model, and reporting other output.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;TMB.hpp&gt;</span></span>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>cpp_code <span class="op">&lt;-</span> <span class="ch">&#39;</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">// Space time</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Type<span class="op">&gt;</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>Type objective_function<span class="op">&lt;</span>Type<span class="op">&gt;::</span><span class="kw">operator</span><span class="op">()</span> <span class="op">()</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">using</span> <span class="kw">namespace</span> density<span class="op">;</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Data</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  DATA_STRING<span class="op">(</span>method<span class="op">);</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  DATA_STRING<span class="op">(</span>dist<span class="op">);</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>c_i<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>weights_i<span class="op">);</span> <span class="co">// new: weights for calculating cAIC</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>depth_s<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  DATA_INTEGER<span class="op">(</span>sim_gmrf<span class="op">)</span> <span class="co">// simulate GMRFs?</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">// SPDE objects</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M0<span class="op">);</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M1<span class="op">);</span></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M2<span class="op">);</span></span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>invsqrtM0<span class="op">);</span></span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>invM0<span class="op">);</span></span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Projection matrices</span></span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>A_is<span class="op">);</span></span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>A_gs<span class="op">);</span></span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Parameters</span></span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>beta0<span class="op">);</span></span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>beta_j<span class="op">);</span></span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_tau<span class="op">);</span></span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_kappa<span class="op">);</span></span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Random effects</span></span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>omega_s<span class="op">);</span></span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Objective function</span></span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  Type jnll <span class="op">=</span> <span class="fl">0.0</span><span class="op">;</span></span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Derived quantities</span></span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  Eigen<span class="op">::</span>SparseMatrix<span class="op">&lt;</span>Type<span class="op">&gt;</span> Q <span class="op">=</span> <span class="op">(</span>exp<span class="op">(</span><span class="dv">4</span><span class="op">*</span>ln_kappa<span class="op">)*</span>M0 <span class="op">+</span></span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>    Type<span class="op">(</span><span class="fl">2.0</span><span class="op">)*</span>exp<span class="op">(</span><span class="dv">2</span><span class="op">*</span>ln_kappa<span class="op">)*</span> M1 <span class="op">+</span> M2<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span><span class="dv">2</span><span class="op">*</span>ln_tau<span class="op">);</span></span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  jnll <span class="op">+=</span> GMRF<span class="op">(</span>Q<span class="op">)(</span>omega_s<span class="op">);</span></span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="op">(</span>sim_gmrf<span class="op">)</span> SIMULATE <span class="op">{</span>GMRF<span class="op">(</span>Q<span class="op">).</span>simulate<span class="op">(</span>omega_s<span class="op">);}</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;TMB.hpp&gt;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Space time</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Type<span class="op">&gt;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>Type objective_function<span class="op">&lt;</span>Type<span class="op">&gt;::</span><span class="kw">operator</span><span class="op">()</span> <span class="op">()</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">using</span> <span class="kw">namespace</span> density<span class="op">;</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Data</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  DATA_STRING<span class="op">(</span>method<span class="op">);</span> <span class="co">// which method to use (e.g., &quot;diffusion&quot;)</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  DATA_STRING<span class="op">(</span>dist<span class="op">);</span> <span class="co">// distribution (this example uses &quot;LNP&quot; (lognormal-Poisson))</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>c_i<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>weights_i<span class="op">);</span> <span class="co">// weights for calculating cAIC</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>depth_s<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  <span class="co">// SPDE objects (computed from mesh)</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M0<span class="op">);</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M1<span class="op">);</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M2<span class="op">);</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>invsqrtM0<span class="op">);</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>invM0<span class="op">);</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Projection matrices from mesh nodes to:</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>A_is<span class="op">);</span> <span class="co">// observation level, i</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>A_gs<span class="op">);</span> <span class="co">// prediction grid, g</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Parameters</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>beta0<span class="op">);</span> <span class="co">// Intercept</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>beta_j<span class="op">);</span> <span class="co">// depth coefficients (linear + quadratic)</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_tau<span class="op">);</span> <span class="co">// scalar of the precision matrix</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_kappa<span class="op">);</span> <span class="co">// decorrelation rate</span></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Random effects</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>omega_s<span class="op">);</span> <span class="co">// spatial random effects</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Objective function</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>  Type jnll <span class="op">=</span> <span class="fl">0.0</span><span class="op">;</span> <span class="co">// joint negative log-likelihood</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Derived quantities</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Q = precision matrix for the Gaussian random field</span></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  Eigen<span class="op">::</span>SparseMatrix<span class="op">&lt;</span>Type<span class="op">&gt;</span> Q <span class="op">=</span> <span class="op">(</span>exp<span class="op">(</span><span class="dv">4</span><span class="op">*</span>ln_kappa<span class="op">)*</span>M0 <span class="op">+</span></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>    Type<span class="op">(</span><span class="fl">2.0</span><span class="op">)*</span>exp<span class="op">(</span><span class="dv">2</span><span class="op">*</span>ln_kappa<span class="op">)*</span> M1 <span class="op">+</span> M2<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span><span class="dv">2</span><span class="op">*</span>ln_tau<span class="op">);</span></span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  jnll <span class="op">+=</span> GMRF<span class="op">(</span>Q<span class="op">)(</span>omega_s<span class="op">);</span></span>
 <span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Probability of random effects</span></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Probability of random effects (depending on if method is diffusion or not)</span></span>
 <span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span><span class="op">(</span>method <span class="op">==</span> <span class="st">&quot;diffusion&quot;</span><span class="op">){</span></span>
 <span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>    PARAMETER<span class="op">(</span>ln_kappa2<span class="op">);</span></span>
 <span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>    Eigen<span class="op">::</span>SparseLU<span class="op">&lt;</span> Eigen<span class="op">::</span>SparseMatrix<span class="op">&lt;</span>Type<span class="op">&gt;,</span> Eigen<span class="op">::</span>COLAMDOrdering<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">&gt;</span> lu<span class="op">;</span></span>
@@ -3298,65 +3298,57 @@ vertical-align: -.125em;
 <span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>    depth_s <span class="op">=</span> depth_sz<span class="op">.</span>col<span class="op">(</span><span class="dv">0</span><span class="op">);</span> <span class="co">// turn one column matrix to vector</span></span>
 <span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>    <span class="co">//Type SigmaD = 1 / sqrt(4 * M_PI * exp(2*ln_tau2) * exp(2*ln_kappa2));</span></span>
+<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Derived range parameter for diffusion</span></span>
 <span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>    Type Range2 <span class="op">=</span> sqrt<span class="op">(</span><span class="dv">8</span><span class="op">)</span> <span class="op">/</span> exp<span class="op">(</span>ln_kappa2<span class="op">);</span></span>
 <span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>    REPORT<span class="op">(</span>Range2<span class="op">);</span></span>
-<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>    <span class="co">//REPORT(SigmaD);</span></span>
-<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>    REPORT<span class="op">(</span>ln_kappa2<span class="op">);</span></span>
-<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
-<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> depth_i <span class="op">=</span> A_is <span class="op">*</span> depth_s<span class="op">;</span></span>
-<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> depth_g <span class="op">=</span> A_gs <span class="op">*</span> depth_s<span class="op">;</span></span>
-<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_s<span class="op">);</span></span>
-<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_i<span class="op">);</span></span>
-<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_g<span class="op">);</span></span>
-<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> omega_i <span class="op">=</span> A_is <span class="op">*</span> omega_s<span class="op">;</span></span>
-<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> omega_g <span class="op">=</span> A_gs <span class="op">*</span> omega_s<span class="op">;</span></span>
-<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_i <span class="op">=</span> depth_i<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_i<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
-<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_g <span class="op">=</span> depth_g<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_g<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
-<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Add weights here so that I can set them to 0 when calculating conditional AIC</span></span>
-<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_i <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_i <span class="op">+</span> pdepth_i<span class="op">);</span></span>
-<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span><span class="op">(</span>dist<span class="op">==</span><span class="st">&quot;LNP&quot;</span><span class="op">){</span></span>
-<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>    PARAMETER<span class="op">(</span>ln_sigma_eta<span class="op">);</span></span>
-<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>    PARAMETER_VECTOR<span class="op">(</span>eta_i<span class="op">);</span></span>
-<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span><span class="op">(</span><span class="dt">int</span> i<span class="op">=</span><span class="dv">0</span><span class="op">;</span> i<span class="op">&lt;</span>c_i<span class="op">.</span>size<span class="op">();</span> i<span class="op">++){</span></span>
-<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> <span class="op">(</span>weights_i<span class="op">(</span>i<span class="op">)</span> <span class="op">&gt;</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">))</span> <span class="op">{</span></span>
-<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>        jnll <span class="op">-=</span> dnorm<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">),</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">),</span> exp<span class="op">(</span>ln_sigma_eta<span class="op">),</span> <span class="kw">true</span><span class="op">);</span></span>
-<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>        jnll <span class="op">-=</span> dpois<span class="op">(</span>c_i<span class="op">(</span>i<span class="op">),</span> mu_i<span class="op">(</span>i<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">)),</span> <span class="kw">true</span><span class="op">);</span></span>
-<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span></span>
-<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>      SIMULATE <span class="op">{</span></span>
-<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>weights_i<span class="op">(</span>i<span class="op">)</span> <span class="op">&gt;</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">))</span> <span class="op">{</span></span>
-<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>          eta_i<span class="op">(</span>i<span class="op">)</span> <span class="op">=</span> rnorm<span class="op">(</span>Type<span class="op">(</span><span class="fl">0.0</span><span class="op">),</span> exp<span class="op">(</span>ln_sigma_eta<span class="op">));</span></span>
-<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>          c_i<span class="op">(</span>i<span class="op">)</span> <span class="op">=</span> rpois<span class="op">(</span>mu_i<span class="op">(</span>i<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">)));</span></span>
-<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
-<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span></span>
-<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
-<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_g <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_g <span class="op">+</span> pdepth_g<span class="op">);</span></span>
-<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Reporting</span></span>
-<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>Q<span class="op">);</span></span>
-<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>omega_g<span class="op">);</span></span>
-<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>mu_i<span class="op">);</span></span>
-<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>mu_g<span class="op">);</span></span>
-<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>pdepth_i<span class="op">);</span></span>
-<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>pdepth_g<span class="op">);</span></span>
+<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>    REPORT<span class="op">(</span>ln_kappa2<span class="op">);</span></span>
+<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Projection to obs / grid</span></span>
+<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> depth_i <span class="op">=</span> A_is <span class="op">*</span> depth_s<span class="op">;</span></span>
+<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> depth_g <span class="op">=</span> A_gs <span class="op">*</span> depth_s<span class="op">;</span></span>
+<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_s<span class="op">);</span></span>
+<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_i<span class="op">);</span></span>
+<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>depth_g<span class="op">);</span></span>
+<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> omega_i <span class="op">=</span> A_is <span class="op">*</span> omega_s<span class="op">;</span></span>
+<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> omega_g <span class="op">=</span> A_gs <span class="op">*</span> omega_s<span class="op">;</span></span>
+<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Polynomial depth effect (linear + quadratic terms)</span></span>
+<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_i <span class="op">=</span> depth_i<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_i<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_g <span class="op">=</span> depth_g<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_g<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Add weights here so that I can set them to 0 when calculating conditional AIC</span></span>
+<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Expected mean counts at observation locations</span></span>
+<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_i <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_i <span class="op">+</span> pdepth_i<span class="op">);</span></span>
+<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_sigma_eta<span class="op">);</span></span>
+<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>eta_i<span class="op">);</span></span>
+<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span><span class="op">(</span><span class="dt">int</span> i<span class="op">=</span><span class="dv">0</span><span class="op">;</span> i<span class="op">&lt;</span>c_i<span class="op">.</span>size<span class="op">();</span> i<span class="op">++){</span></span>
+<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>weights_i<span class="op">(</span>i<span class="op">)</span> <span class="op">&gt;</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>      jnll <span class="op">-=</span> dnorm<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">),</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">),</span> exp<span class="op">(</span>ln_sigma_eta<span class="op">),</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>      jnll <span class="op">-=</span> dpois<span class="op">(</span>c_i<span class="op">(</span>i<span class="op">),</span> mu_i<span class="op">(</span>i<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">)),</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Expected mean counts at prediction grid</span></span>
+<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_g <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_g <span class="op">+</span> pdepth_g<span class="op">);</span></span>
+<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Reporting (output)</span></span>
+<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>Q<span class="op">);</span></span>
+<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>mu_i<span class="op">);</span> <span class="co">// predicted counts at observations</span></span>
+<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>mu_g<span class="op">);</span> <span class="co">// predicted counts at grid level</span></span>
+<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>pdepth_i<span class="op">);</span></span>
+<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>  REPORT<span class="op">(</span>pdepth_g<span class="op">);</span></span>
+<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> jnll<span class="op">;</span></span>
+<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a><span class="op">}</span><span class="ch">&#39;</span></span>
 <span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>  SIMULATE <span class="op">{</span></span>
-<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>    REPORT<span class="op">(</span>c_i<span class="op">);</span></span>
-<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
-<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> jnll<span class="op">;</span></span>
-<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>writeLines<span class="op">(</span>cpp_code<span class="op">,</span> paste0<span class="op">(</span>home<span class="op">,</span> <span class="st">&quot;/tmb/movement_kernel_vignette.cpp&quot;</span><span class="op">))</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>We can download the .cpp file from GitHub to the working directory and compile it.</p>
+<p>Once the file is written, we compile it.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Download the C++ file from GitHub</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>cpp_url <span class="ot">&lt;-</span> <span class="st">&quot;https://raw.githubusercontent.com/maxlindmark/covariate_diffusion/refs/heads/paper/tmb/movement_kernel_ebs.cpp&quot;</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">download.file</span>(cpp_url, <span class="at">destfile =</span> <span class="st">&quot;movement_kernel_ebs.cpp&quot;</span>)</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Compile and load as usual</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>TMB<span class="sc">::</span><span class="fu">compile</span>(<span class="st">&quot;movement_kernel_ebs.cpp&quot;</span>, <span class="at">framework =</span> <span class="st">&quot;TMBad&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Compile and load</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">setwd</span>(home) <span class="co"># This is needed if you have spaces in your path!</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>TMB<span class="sc">::</span><span class="fu">compile</span>(<span class="st">&quot;tmb/movement_kernel_vignette.cpp&quot;</span>, <span class="at">framework =</span> <span class="st">&quot;TMBad&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>using C++ compiler: &#39;Apple clang version 17.0.0 (clang-1700.0.13.3)&#39;</code></pre>
 </div>
@@ -3366,9 +3358,9 @@ vertical-align: -.125em;
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dyn.load</span>(<span class="fu">dynlib</span>(<span class="st">&quot;movement_kernel_ebs&quot;</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dyn.load</span>(<span class="fu">dynlib</span>(<span class="st">&quot;tmb/movement_kernel_vignette&quot;</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Define a list of data objects to pass to TMB.</p>
+<p>Next we define a list of data objects to pass to TMB.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>Data <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;method&quot;</span> <span class="ot">=</span> <span class="st">&quot;diffusion&quot;</span>, <span class="co"># Use diffusion approach (see .cpp file)</span></span>
@@ -3386,7 +3378,7 @@ vertical-align: -.125em;
 <span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;sim_gmrf&quot;</span> <span class="ot">=</span> <span class="dv">0</span>L</span>
 <span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Define the parameters and assign starting values.</p>
+<p>… and a list of parameters and their starting values.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Params <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;beta0&quot;</span> <span class="ot">=</span> <span class="dv">0</span>, <span class="co"># Intercept</span></span>
@@ -3401,7 +3393,7 @@ vertical-align: -.125em;
 <span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>Params<span class="sc">$</span>eta_i <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">nrow</span>(cap))</span>
 <span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>Random <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;omega_s&quot;</span>, <span class="st">&quot;eta_i&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Create TMB object (containing functions to calculate the objective function and its gradient.)</p>
+<p>Create the TMB object (containing functions to calculate the objective function and its gradient.)</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Obj <span class="ot">&lt;-</span> <span class="fu">MakeADFun</span>(</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> Data,</span>
@@ -3411,7 +3403,7 @@ vertical-align: -.125em;
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Obj$env$beSilent()</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Optimize parameters.</p>
+<p>… And use <code>nlminb()</code> to optimize parameters.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Optimize</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>Opt <span class="ot">&lt;-</span> <span class="fu">nlminb</span>(</span>
@@ -3509,6 +3501,7 @@ ln_sigma_eta
 </div>
 </div>
 </div>
+<p>The code to generate this vignette is found here: <a href="https://github.com/maxlindmark/covariate_diffusion/blob/paper/docs/index.qmd" class="uri">https://github.com/maxlindmark/covariate_diffusion/blob/paper/docs/index.qmd</a></p>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>

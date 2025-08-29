@@ -153,9 +153,11 @@ The steps to fitting the model are:
 
 5. Optimize model with `nlminb()`
 
-The C++ code we'll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. It also reports back predictions and marginal effects of depth, and other things.
+The C++ code we'll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. The following chunk writes the .cpp file to a folder called "tmb" in your home directory. It is a slightly trimmed down version of the .cpp [files used in the paper](https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb), which allow for different distributions, simulating from the model, and reporting other output.
 
 ```{cpp}
+cpp_code <- '
+
 #include <TMB.hpp>
 
 // Space time
@@ -165,44 +167,42 @@ Type objective_function<Type>::operator() ()
   using namespace density;
 
   // Data
-  DATA_STRING(method);
-  DATA_STRING(dist);
+  DATA_STRING(method); // which method to use (e.g., "diffusion")
+  DATA_STRING(dist); // distribution (this example uses "LNP" (lognormal-Poisson))
   DATA_VECTOR(c_i);  // counts for observation i
-  DATA_VECTOR(weights_i); // new: weights for calculating cAIC
+  DATA_VECTOR(weights_i); // weights for calculating cAIC
   DATA_VECTOR(depth_s);  // counts for observation i
-  DATA_INTEGER(sim_gmrf) // simulate GMRFs?
 
-  // SPDE objects
+  // SPDE objects (computed from mesh)
   DATA_SPARSE_MATRIX(M0);
   DATA_SPARSE_MATRIX(M1);
   DATA_SPARSE_MATRIX(M2);
   DATA_SPARSE_MATRIX(invsqrtM0);
   DATA_SPARSE_MATRIX(invM0);
 
-  // Projection matrices
-  DATA_SPARSE_MATRIX(A_is);
-  DATA_SPARSE_MATRIX(A_gs);
+  // Projection matrices from mesh nodes to:
+  DATA_SPARSE_MATRIX(A_is); // observation level, i
+  DATA_SPARSE_MATRIX(A_gs); // prediction grid, g
 
   // Parameters
-  PARAMETER(beta0);
-  PARAMETER_VECTOR(beta_j);
-  PARAMETER(ln_tau);
-  PARAMETER(ln_kappa);
+  PARAMETER(beta0); // Intercept
+  PARAMETER_VECTOR(beta_j); // depth coefficients (linear + quadratic)
+  PARAMETER(ln_tau); // scalar of the precision matrix
+  PARAMETER(ln_kappa); // decorrelation rate
 
   // Random effects
-  PARAMETER_VECTOR(omega_s);
+  PARAMETER_VECTOR(omega_s); // spatial random effects
 
   // Objective function
-  Type jnll = 0.0;
+  Type jnll = 0.0; // joint negative log-likelihood
 
   // Derived quantities
+  // Q = precision matrix for the Gaussian random field
   Eigen::SparseMatrix<Type> Q = (exp(4*ln_kappa)*M0 +
     Type(2.0)*exp(2*ln_kappa)* M1 + M2) * exp(2*ln_tau);
   jnll += GMRF(Q)(omega_s);
 
-  if (sim_gmrf) SIMULATE {GMRF(Q).simulate(omega_s);}
-
-  // Probability of random effects
+  // Probability of random effects (depending on if method is diffusion or not)
   if(method == "diffusion"){
     PARAMETER(ln_kappa2);
     Eigen::SparseLU< Eigen::SparseMatrix<Type>, Eigen::COLAMDOrdering<int> > lu;
@@ -219,12 +219,13 @@ Type objective_function<Type>::operator() ()
 
     depth_s = depth_sz.col(0); // turn one column matrix to vector
 
-    //Type SigmaD = 1 / sqrt(4 * M_PI * exp(2*ln_tau2) * exp(2*ln_kappa2));
+    // Derived range parameter for diffusion
     Type Range2 = sqrt(8) / exp(ln_kappa2);
     REPORT(Range2);
-    //REPORT(SigmaD);
     REPORT(ln_kappa2);
   }
+  
+  // Projection to obs / grid
   vector<Type> depth_i = A_is * depth_s;
   vector<Type> depth_g = A_gs * depth_s;
   REPORT(depth_s);
@@ -232,58 +233,49 @@ Type objective_function<Type>::operator() ()
   REPORT(depth_g);
   vector<Type> omega_i = A_is * omega_s;
   vector<Type> omega_g = A_gs * omega_s;
+  
+  // Polynomial depth effect (linear + quadratic terms)
   vector<Type> pdepth_i = depth_i*beta_j(0) + pow(depth_i,2)*beta_j(1);
   vector<Type> pdepth_g = depth_g*beta_j(0) + pow(depth_g,2)*beta_j(1);
 
   // Add weights here so that I can set them to 0 when calculating conditional AIC
+  // Expected mean counts at observation locations
   vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
-  if(dist=="LNP"){
-    PARAMETER(ln_sigma_eta);
-    PARAMETER_VECTOR(eta_i);
-    for(int i=0; i<c_i.size(); i++){
-      if (weights_i(i) > Type(0.0)) {
-        jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
-        jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
-      }
-      SIMULATE {
-        if (weights_i(i) > Type(0.0)) {
-          eta_i(i) = rnorm(Type(0.0), exp(ln_sigma_eta));
-          c_i(i) = rpois(mu_i(i) * exp(eta_i(i)));
-        }
-      }
+  PARAMETER(ln_sigma_eta);
+  PARAMETER_VECTOR(eta_i);
+  for(int i=0; i<c_i.size(); i++){
+    if (weights_i(i) > Type(0.0)) {
+      jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
+      jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
     }
   }
+  
+  // Expected mean counts at prediction grid
   vector<Type> mu_g = exp(beta0 + omega_g + pdepth_g);
 
-  // Reporting
+  // Reporting (output)
   REPORT(Q);
-  REPORT(omega_g);
-  REPORT(mu_i);
-  REPORT(mu_g);
+  REPORT(mu_i); // predicted counts at observations
+  REPORT(mu_g); // predicted counts at grid level
   REPORT(pdepth_i);
   REPORT(pdepth_g);
 
-  SIMULATE {
-    REPORT(c_i);
-  }
-
   return jnll;
-}
+}'
+
+writeLines(cpp_code, paste0(home, "/tmb/movement_kernel_vignette.cpp"))
 ```
 
-We can download the .cpp file from GitHub to the working directory and compile it.
+Once the file is written, we compile it.
 
 ```{r}
-# Download the C++ file from GitHub
-cpp_url <- "https://raw.githubusercontent.com/maxlindmark/covariate_diffusion/refs/heads/paper/tmb/movement_kernel_ebs.cpp"
-download.file(cpp_url, destfile = "movement_kernel_ebs.cpp")
-
-# Compile and load as usual
-TMB::compile("movement_kernel_ebs.cpp", framework = "TMBad")
-dyn.load(dynlib("movement_kernel_ebs"))
+# Compile and load
+setwd(home) # This is needed if you have spaces in your path!
+TMB::compile("tmb/movement_kernel_vignette.cpp", framework = "TMBad")
+dyn.load(dynlib("tmb/movement_kernel_vignette"))
 ```
 
-Define a list of data objects to pass to TMB.
+Next we define a list of data objects to pass to TMB.
 
 ```{r}
 Data <- list(
@@ -303,7 +295,7 @@ Data <- list(
 )
 ```
 
-Define the parameters and assign starting values.
+... and a list of parameters and their starting values.
 
 ```{r}
 Params <- list(
@@ -320,7 +312,7 @@ Params$eta_i <- rnorm(nrow(cap))
 Random <- c("omega_s", "eta_i")
 ```
 
-Create TMB object (containing functions to calculate the objective function and its gradient.)
+Create the TMB object (containing functions to calculate the objective function and its gradient.)
 
 ```{r}
 Obj <- MakeADFun(
@@ -332,7 +324,7 @@ Obj <- MakeADFun(
 # Obj$env$beSilent()
 ```
 
-Optimize parameters.
+... And use `nlminb()` to optimize parameters.
 
 ```{r}
 #| message: false
@@ -437,6 +429,8 @@ p2 <- map_ebs +
 
 (p1 + p2) & plot_layout(axis_titles = "collect_y", axes = "collect_y")
 ```
+
+The code to generate this vignette is found here: <https://github.com/maxlindmark/covariate_diffusion/blob/paper/docs/index.qmd>
 
 ## References
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M. (2016). TMB: Automatic Differentiation and Laplace Approximation. Journal of Statistical Software, 70(1), Article 1. <https://doi.org/10.18637/jss.v070.i05>
