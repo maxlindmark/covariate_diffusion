@@ -1,4 +1,4 @@
-# FROM: C:\Users\James.Thorson\Desktop\Work files\Collaborations\2024 -- movement kernel for covariates\Old code\covariate_diffusion_2024-02-05.R
+# Code to visualize diffusion and mass conservation
 
 library(fmesher)
 library(Matrix)
@@ -167,10 +167,6 @@ b <- p +
     axis.title.y = element_text(size = 8, angle = 90),
     strip.text.x.top = element_blank()
   )
-
-# b +
-#   scale_fill_viridis(name = "Scaled\ncovariate", option = "G") +
-#   scale_color_viridis(option = "G")
 
 (t / b) + plot_layout(guides = "collect") &
   coord_sf(xlim = c(0.05, 0.99), ylim = c(0.05, 0.99)) &
