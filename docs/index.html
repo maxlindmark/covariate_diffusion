@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Max Lindmark, Sean C. Anderson, James Thorson">
-<meta name="dcterms.date" content="2025-08-29">
+<meta name="dcterms.date" content="2025-09-02">
 
 <title>Fitting a covariate diffusion model</title>
 <style>
@@ -3106,7 +3106,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">August 29, 2025</p>
+      <p class="date">September 2, 2025</p>
     </div>
   </div>
   
@@ -3132,7 +3132,7 @@ vertical-align: -.125em;
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_light</span>())</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RCurl)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>In this vignette, we walk through all the steps to prepare data for a diffusion model, fit it with the R-package TMB (Kristensen et al., 2016), and lastly visualize the diffused covariate. A “diffusion model” here refers to a model where a sparse inverse diffusion operator is applied to covariate(s) to calculate a spatially weighted average of local habitat (Lindmark, Anderson &amp; Thorson, 2025). This vignette is mainly to showcase the workflow; for technical details and derivations, we refer to the paper (Lindmark, Anderson &amp; Thorson, 2025).</p>
+<p>In this vignette, we walk through all the steps to prepare data for a diffusion model within the SPDE framework (Lindgren, Rue &amp; Lindström, 2011; Lindgren 2023), fit it with the R-package TMB (Kristensen et al., 2016), and lastly visualize the diffused covariate. A “diffusion model” here refers to a model where a sparse inverse diffusion operator is applied to covariate(s) to calculate a spatially weighted average of local habitat (Lindmark, Anderson &amp; Thorson, 2025). This vignette is mainly to showcase the workflow; for technical details and derivations, we refer to the paper (Lindmark, Anderson &amp; Thorson, 2025).</p>
 <p>In this example, we use data on capelin (<em>Mallotus villosus</em>) counts, from a fixed-station bottom trawl survey conducted in 2019 in the northeastern Bering Sea by the NOAA Alaska Fisheries Science Center.</p>
 <section id="preparing-data-and-spde-matricies" class="level3">
 <h3 class="anchored" data-anchor-id="preparing-data-and-spde-matricies">Preparing data and SPDE matricies</h3>
@@ -3506,6 +3506,8 @@ ln_sigma_eta
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>
 <p>Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., &amp; Bell, B. M. (2016). TMB: Automatic Differentiation and Laplace Approximation. Journal of Statistical Software, 70(1), Article 1. <a href="https://doi.org/10.18637/jss.v070.i05" class="uri">https://doi.org/10.18637/jss.v070.i05</a></p>
+<p>Lindgren, F. (2023). <em>fmesher: Triangle Meshes and Related Geometry Tools</em>. R package version 0.1.5, <a href="https://CRAN.R-project.org/package=fmesher" class="uri">https://CRAN.R-project.org/package=fmesher</a>.</p>
+<p>Lindgren, F., Rue, H., &amp; Lindström, J. (2011). An explicit link between Gaussian fields and Gaussian Markov random fields: The stochastic partial differential equation approach. Journal of the Royal Statistical Society: Series B (Statistical Methodology), 73(4), 423–498. <a href="https://doi.org/10.1111/j.1467-9868.2011.00777.x" class="uri">https://doi.org/10.1111/j.1467-9868.2011.00777.x</a></p>
 <p>Lindmark, M., Anderson, S. C., &amp; Thorson, J. T. (2025). Estimating scale-dependent covariate responses using two-dimensional diffusion derived from the SPDE method (p. 2024.12.17.628864). bioRxiv. <a href="https://doi.org/10.1101/2024.12.17.628864" class="uri">https://doi.org/10.1101/2024.12.17.628864</a></p>
 </section>
 

@@ -36,7 +36,7 @@ theme_set(theme_light())
 library(RCurl)
 ```
 
-In this vignette, we walk through all the steps to prepare data for a diffusion model, fit it with the R-package TMB (Kristensen et al., 2016), and lastly visualize the diffused covariate. A "diffusion model" here refers to a model where a sparse inverse diffusion operator is applied to covariate(s) to calculate a spatially weighted average of local habitat (Lindmark, Anderson \& Thorson, 2025). This vignette is mainly to showcase the workflow; for technical details and derivations, we refer to the paper (Lindmark, Anderson \& Thorson, 2025). 
+In this vignette, we walk through all the steps to prepare data for a diffusion model within the SPDE framework (Lindgren, Rue \& Lindström, 2011; Lindgren 2023), fit it with the R-package TMB (Kristensen et al., 2016), and lastly visualize the diffused covariate. A "diffusion model" here refers to a model where a sparse inverse diffusion operator is applied to covariate(s) to calculate a spatially weighted average of local habitat (Lindmark, Anderson \& Thorson, 2025). This vignette is mainly to showcase the workflow; for technical details and derivations, we refer to the paper (Lindmark, Anderson \& Thorson, 2025). 
 
 In this example, we use data on capelin (*Mallotus villosus*) counts, from a fixed-station bottom trawl survey conducted in 2019 in the northeastern Bering Sea by the NOAA Alaska Fisheries Science Center.
 
@@ -434,5 +434,9 @@ The code to generate this vignette is found here: <https://github.com/maxlindmar
 
 ## References
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M. (2016). TMB: Automatic Differentiation and Laplace Approximation. Journal of Statistical Software, 70(1), Article 1. <https://doi.org/10.18637/jss.v070.i05>
+
+Lindgren, F. (2023). _fmesher: Triangle Meshes and Related Geometry Tools_. R package version 0.1.5, <https://CRAN.R-project.org/package=fmesher>.
+
+Lindgren, F., Rue, H., & Lindström, J. (2011). An explicit link between Gaussian fields and Gaussian Markov random fields: The stochastic partial differential equation approach. Journal of the Royal Statistical Society: Series B (Statistical Methodology), 73(4), 423–498. <https://doi.org/10.1111/j.1467-9868.2011.00777.x>
 
 Lindmark, M., Anderson, S. C., & Thorson, J. T. (2025). Estimating scale-dependent covariate responses using two-dimensional diffusion derived from the SPDE method (p. 2024.12.17.628864). bioRxiv. <https://doi.org/10.1101/2024.12.17.628864>
