@@ -44,7 +44,7 @@ theme_set(theme_sleek())
 - Vary sigma and the diffusion parameters. How well can we retrieve them?
 - How well can we get the correct model with AIC?
 
-#### Fit a model to adult yellowfin sole
+#### Fit a model to juvenile Pacific cod
 ... To get a feeling for some sensible starting values for parameters and to get a model to simulate form
 
 ```{r load data}
@@ -296,10 +296,12 @@ sim_df <- bind_rows(sim_dat_list)
 
 #### Fit models to simulated data
 
-I will fit two models; with and without diffusion. In this example, I draw 200 simulated data sets (based on the "rounded" fixed effect estimates while keeping the GMRF to the adult yellowfin sole values) in a for-loop and fit both models, then I extract the estimates.
+I will fit two models; with and without diffusion. In this example, I draw 200 simulated data sets (based on the "rounded" fixed effect estimates while keeping the GMRF to the one for juvenile Pacific cod) in a for-loop and fit both models, then I extract the estimates.
 
 ```{r fit to simulated data}
 #| results: hide
+#| message: false
+#| warnings: false
 
 # These are the parameters I'm tracking
 pars <- "beta_j"
@@ -495,6 +497,8 @@ for (i in unique(sim_df_main$index)) {
 
 ```{r fit to simulated data vary ln_kappa2}
 #| results: hide
+#| warnings: false
+#| message: false
 
 # This only uses the diffusion OM
 # I track beta and kappa2
