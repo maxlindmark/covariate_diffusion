@@ -153,7 +153,7 @@ The steps to fitting the model are:
 
 5. Optimize model with `nlminb()`
 
-The C++ code we'll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. The following chunk writes the .cpp file to a folder called "tmb" in your home directory. It is a slightly trimmed down version of the .cpp [files used in the paper](https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb), which allow for different distributions, simulating from the model, and reporting other output.
+The C++ code we'll use for this specific model is in the following chunk. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the `Data` list. The following chunk writes the .cpp file to a folder called "tmb" in your home directory. It is a slightly trimmed down version of the .cpp [files used in the paper](https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb), which allow for different distributions, simulating from the model, and reporting other output.
 
 ```{cpp}
 cpp_code <- '
@@ -171,7 +171,7 @@ Type objective_function<Type>::operator() ()
   DATA_STRING(dist); // distribution (this example uses "LNP" (lognormal-Poisson))
   DATA_VECTOR(c_i);  // counts for observation i
   DATA_VECTOR(weights_i); // weights for calculating cAIC
-  DATA_VECTOR(depth_s);  // counts for observation i
+  DATA_VECTOR(depth_s);  // covariate values at mesh vertices
 
   // SPDE objects (computed from mesh)
   DATA_SPARSE_MATRIX(M0);
@@ -238,12 +238,12 @@ Type objective_function<Type>::operator() ()
   vector<Type> pdepth_i = depth_i*beta_j(0) + pow(depth_i,2)*beta_j(1);
   vector<Type> pdepth_g = depth_g*beta_j(0) + pow(depth_g,2)*beta_j(1);
 
-  // Add weights here so that I can set them to 0 when calculating conditional AIC
   // Expected mean counts at observation locations
   vector<Type> mu_i = exp(beta0 + omega_i + pdepth_i);
   PARAMETER(ln_sigma_eta);
   PARAMETER_VECTOR(eta_i);
   for(int i=0; i<c_i.size(); i++){
+    // Using weights here so that we can set them to 0 when calculating conditional AIC
     if (weights_i(i) > Type(0.0)) {
       jnll -= dnorm(eta_i(i), Type(0.0), exp(ln_sigma_eta), true);
       jnll -= dpois(c_i(i), mu_i(i) * exp(eta_i(i)), true);
@@ -295,7 +295,7 @@ Data <- list(
 )
 ```
 
-... and a list of parameters and their starting values.
+And a list of parameters and their starting values.
 
 ```{r}
 Params <- list(
@@ -312,7 +312,7 @@ Params$eta_i <- rnorm(nrow(cap))
 Random <- c("omega_s", "eta_i")
 ```
 
-Create the TMB object (containing functions to calculate the objective function and its gradient.)
+Create the TMB object (containing functions to calculate the objective function and its gradient).
 
 ```{r}
 Obj <- MakeADFun(
@@ -324,7 +324,7 @@ Obj <- MakeADFun(
 # Obj$env$beSilent()
 ```
 
-... And use `nlminb()` to optimize parameters.
+And use `nlminb()` to optimize parameters.
 
 ```{r}
 #| message: false
