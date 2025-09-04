@@ -75,6 +75,7 @@ dyn.load(dynlib("timing/covariate_diffusion"))
 
 fit_models <- function(sim_object) {
 
+  # s <- simulate_dat()
   s <- sim_object
 
   distribution <- c("Tweedie", "Poisson", "LNP")[2]
@@ -142,7 +143,28 @@ fit_models <- function(sim_object) {
   times$standard_nlminb <- out[["elapsed"]]
 
   out <- system.time({
-    sdr <- sdreport(Obj)
+    gr = Obj$gr( Opt$par )
+  })
+  times$standard_gr <- out[["elapsed"]]
+
+  out <- system.time({
+    Hess = optimHess(
+      par = Opt$par,
+      fn = Obj$fn,
+      gr = Obj$gr
+    )
+  })
+  times$standard_Hess <- out[["elapsed"]]
+
+  out <- system.time({
+    sdr <- sdreport(
+      Obj,
+      par.fixed = Opt$par,
+      hessian.fixed = Hess,
+      getReportCovariance = FALSE,
+      skip.delta.method = FALSE,
+      ignore.parm.uncertainty = FALSE
+    )
   })
   times$standard_sdreport <- out[["elapsed"]]
 
@@ -169,7 +191,28 @@ fit_models <- function(sim_object) {
   times$diffused_nlminb <- out[["elapsed"]]
 
   out <- system.time({
-    sdr <- sdreport(Obj)
+    gr_diff = Obj_diff$gr( Opt_diff$par )
+  })
+  times$diffused_gr <- out[["elapsed"]]
+
+  out <- system.time({
+    Hess_diff = optimHess(
+      par = Opt_diff$par,
+      fn = Obj_diff$fn,
+      gr = Obj_diff$gr
+    )
+  })
+  times$diffused_Hess <- out[["elapsed"]]
+
+  out <- system.time({
+    sdr_diff <- sdreport(
+      Obj_diff,
+      par.fixed = Opt_diff$par,
+      hessian.fixed = Hess_diff,
+      getReportCovariance = FALSE,
+      skip.delta.method = TRUE,
+      ignore.parm.uncertainty = FALSE
+    )
   })
   times$diffused_sdreport <- out[["elapsed"]]
 
