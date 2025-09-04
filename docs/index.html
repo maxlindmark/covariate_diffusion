@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Max Lindmark, Sean C. Anderson, James Thorson">
-<meta name="dcterms.date" content="2025-09-02">
+<meta name="dcterms.date" content="2025-09-04">
 
 <title>Fitting a covariate diffusion model</title>
 <style>
@@ -3106,7 +3106,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">September 2, 2025</p>
+      <p class="date">September 4, 2025</p>
     </div>
   </div>
   
@@ -3233,7 +3233,7 @@ vertical-align: -.125em;
 <li><p>Create TMB object</p></li>
 <li><p>Optimize model with <code>nlminb()</code></p></li>
 </ol>
-<p>The C++ code we’ll use for this specific model is this one. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the Data list. The following chunk writes the .cpp file to a folder called “tmb” in your home directory. It is a slightly trimmed down version of the .cpp <a href="https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb">files used in the paper</a>, which allow for different distributions, simulating from the model, and reporting other output.</p>
+<p>The C++ code we’ll use for this specific model is in the following chunk. As mentioned, it fits either a standard or a diffusion model, depending on what is provided in the <code>Data</code> list. The following chunk writes the .cpp file to a folder called “tmb” in your home directory. It is a slightly trimmed down version of the .cpp <a href="https://github.com/maxlindmark/covariate_diffusion/tree/paper/tmb">files used in the paper</a>, which allow for different distributions, simulating from the model, and reporting other output.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>cpp_code <span class="op">&lt;-</span> <span class="ch">&#39;</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -3250,7 +3250,7 @@ vertical-align: -.125em;
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  DATA_STRING<span class="op">(</span>dist<span class="op">);</span> <span class="co">// distribution (this example uses &quot;LNP&quot; (lognormal-Poisson))</span></span>
 <span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>c_i<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
 <span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>weights_i<span class="op">);</span> <span class="co">// weights for calculating cAIC</span></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>depth_s<span class="op">);</span>  <span class="co">// counts for observation i</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  DATA_VECTOR<span class="op">(</span>depth_s<span class="op">);</span>  <span class="co">// covariate values at mesh vertices</span></span>
 <span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  <span class="co">// SPDE objects (computed from mesh)</span></span>
 <span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  DATA_SPARSE_MATRIX<span class="op">(</span>M0<span class="op">);</span></span>
@@ -3317,12 +3317,12 @@ vertical-align: -.125em;
 <span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_i <span class="op">=</span> depth_i<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_i<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
 <span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> pdepth_g <span class="op">=</span> depth_g<span class="op">*</span>beta_j<span class="op">(</span><span class="dv">0</span><span class="op">)</span> <span class="op">+</span> pow<span class="op">(</span>depth_g<span class="op">,</span><span class="dv">2</span><span class="op">)*</span>beta_j<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
 <span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Add weights here so that I can set them to 0 when calculating conditional AIC</span></span>
-<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Expected mean counts at observation locations</span></span>
-<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_i <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_i <span class="op">+</span> pdepth_i<span class="op">);</span></span>
-<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_sigma_eta<span class="op">);</span></span>
-<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>eta_i<span class="op">);</span></span>
-<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span><span class="op">(</span><span class="dt">int</span> i<span class="op">=</span><span class="dv">0</span><span class="op">;</span> i<span class="op">&lt;</span>c_i<span class="op">.</span>size<span class="op">();</span> i<span class="op">++){</span></span>
+<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Expected mean counts at observation locations</span></span>
+<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  vector<span class="op">&lt;</span>Type<span class="op">&gt;</span> mu_i <span class="op">=</span> exp<span class="op">(</span>beta0 <span class="op">+</span> omega_i <span class="op">+</span> pdepth_i<span class="op">);</span></span>
+<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>  PARAMETER<span class="op">(</span>ln_sigma_eta<span class="op">);</span></span>
+<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>  PARAMETER_VECTOR<span class="op">(</span>eta_i<span class="op">);</span></span>
+<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span><span class="op">(</span><span class="dt">int</span> i<span class="op">=</span><span class="dv">0</span><span class="op">;</span> i<span class="op">&lt;</span>c_i<span class="op">.</span>size<span class="op">();</span> i<span class="op">++){</span></span>
+<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Using weights here so that we can set them to 0 when calculating conditional AIC</span></span>
 <span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>weights_i<span class="op">(</span>i<span class="op">)</span> <span class="op">&gt;</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">))</span> <span class="op">{</span></span>
 <span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>      jnll <span class="op">-=</span> dnorm<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">),</span> Type<span class="op">(</span><span class="fl">0.0</span><span class="op">),</span> exp<span class="op">(</span>ln_sigma_eta<span class="op">),</span> <span class="kw">true</span><span class="op">);</span></span>
 <span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>      jnll <span class="op">-=</span> dpois<span class="op">(</span>c_i<span class="op">(</span>i<span class="op">),</span> mu_i<span class="op">(</span>i<span class="op">)</span> <span class="op">*</span> exp<span class="op">(</span>eta_i<span class="op">(</span>i<span class="op">)),</span> <span class="kw">true</span><span class="op">);</span></span>
@@ -3378,7 +3378,7 @@ vertical-align: -.125em;
 <span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;sim_gmrf&quot;</span> <span class="ot">=</span> <span class="dv">0</span>L</span>
 <span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>… and a list of parameters and their starting values.</p>
+<p>And a list of parameters and their starting values.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Params <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;beta0&quot;</span> <span class="ot">=</span> <span class="dv">0</span>, <span class="co"># Intercept</span></span>
@@ -3393,7 +3393,7 @@ vertical-align: -.125em;
 <span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>Params<span class="sc">$</span>eta_i <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">nrow</span>(cap))</span>
 <span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>Random <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;omega_s&quot;</span>, <span class="st">&quot;eta_i&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Create the TMB object (containing functions to calculate the objective function and its gradient.)</p>
+<p>Create the TMB object (containing functions to calculate the objective function and its gradient).</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Obj <span class="ot">&lt;-</span> <span class="fu">MakeADFun</span>(</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> Data,</span>
@@ -3403,7 +3403,7 @@ vertical-align: -.125em;
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Obj$env$beSilent()</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>… And use <code>nlminb()</code> to optimize parameters.</p>
+<p>And use <code>nlminb()</code> to optimize parameters.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Optimize</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>Opt <span class="ot">&lt;-</span> <span class="fu">nlminb</span>(</span>
@@ -3423,7 +3423,7 @@ vertical-align: -.125em;
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>Opt<span class="sc">$</span>par</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>       beta0       beta_j       beta_j       ln_tau     ln_kappa    ln_kappa2 
-  -8.7248954  -16.3046958   18.2461500   -1.2976628   -1.0243468   -0.6299777 
+  -8.7248954  -16.3046957   18.2461501   -1.2976628   -1.0243468   -0.6299777 
 ln_sigma_eta 
    0.9558338 </code></pre>
 </div>
