@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/760705858.svg)](https://doi.org/10.5281/zenodo.17200410)
+
 ## Estimating scale-dependent covariate responses using two-dimensional diffusion derived from the SPDE method
 In this paper we introduce a novel method for estimating spatially weighted covariates based on applying local diffusion to the covariate internally in the model. We conduct simulation experiments to verify the model's ability to retrieve diffused covariate effects, and then apply this model to two case studies; the breeding bird survey in the northwest US and scientific trawl data from the eastern Bering Sea.
 
