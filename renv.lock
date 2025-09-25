@@ -2207,6 +2207,21 @@
       ],
       "Hash": "741166cab0fe76d8a5670d3ee459a2a4"
     },
+    "rnaturalearthhires": {
+      "Package": "rnaturalearthhires",
+      "Version": "1.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "ropensci",
+      "RemoteRepo": "rnaturalearthhires",
+      "RemoteRef": "main",
+      "RemoteSha": "e4736f636baa1c013d77d2ba028dd5bc334defee",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "3b9a8a8aff8afaf77715a1632c5cbf0c"
+    },
     "rncl": {
       "Package": "rncl",
       "Version": "0.8.7",
@@ -2429,6 +2444,19 @@
       ],
       "Hash": "75940133cca2e339afce15a586f85b11"
     },
+    "spatial": {
+      "Package": "spatial",
+      "Version": "7.3-17",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "1229a01b4ec059e9f2396724f2ec9010"
+    },
     "stringi": {
       "Package": "stringi",
       "Version": "1.8.3",
@@ -2458,6 +2486,22 @@
         "vctrs"
       ],
       "Hash": "960e2ae9e09656611e0b8214ad543207"
+    },
+    "survival": {
+      "Package": "survival",
+      "Version": "3.5-7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "graphics",
+        "methods",
+        "splines",
+        "stats",
+        "utils"
+      ],
+      "Hash": "b8e943d262c3da0b0febd3e04517c197"
     },
     "sys": {
       "Package": "sys",
