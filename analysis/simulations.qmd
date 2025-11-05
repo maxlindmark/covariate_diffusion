@@ -748,7 +748,7 @@ p <- ggplot(pars_df, aes(`Estimation model`, est, fill = sigma_eta, color = sigm
     )
   ) +
   geom_text(
-    data = aic_df_sum, aes(label = round(count_prop, digits = 2), color = ln_sigma_eta),
+    data = aic_df_sum, aes(label = round(count_prop, digits = 3), color = ln_sigma_eta),
     size = 3.5, position = position_dodge(width = 0.85), fontface = 2
   ) +
   theme( # legend.position.inside = c(0.75, 0.15),
@@ -787,7 +787,7 @@ aic_df_kappa_sum <- aic_df_kappa |>
     count = sum(aic),
     .by = c(`Estimation model`, ln_kappa2)
   ) |>
-  mutate(count_prop = round(count / n_sim, digits = 2)) |>
+  mutate(count_prop = round(count / n_sim, digits = 3)) |>
   mutate(
     ln_kappa2 = ifelse(ln_kappa2 == 1, "log(\u03BA) = 1\nHigh diffusion", ln_kappa2),
     ln_kappa2 = ifelse(ln_kappa2 == 2.5, "log(\u03BA) = 2.5\nMedium diffusion", ln_kappa2),
@@ -819,24 +819,6 @@ tag_facet(p, fontface = 1, size = 3.5)
 ggsave(paste0(here::here(), "/results/figures/sims_beta_kappa.pdf"),
   width = 20, height = 11, unit = "cm", device = cairo_pdf
 )
-
-# testing
-ggplot(pars_df_kappa2, aes(`Estimation model`, est)) +
-  #geom_jitter(alpha = 0.15, shape = 21, color = "white", fill = "grey10", size = 2, height = 0, width = 0.1) +
-  stat_halfeye(alpha = 0.8, color = NA) +
-  stat_pointinterval(color = "grey20") +
-  labs(y = "Estimated depth coefficient", x = "Estimation model") +
-  geom_hline(
-    data = true, aes(yintercept = value),
-    alpha = 0.6, linetype = 2
-  ) +
-  geom_text(data = aic_df_kappa_sum, aes(label = count_prop), size = 3.5, color = "grey30") +
-  facet_wrap(~ln_kappa2, ncol = 3, scales = "free") +
-  guides(color = "none", fill = guide_legend(position = "inside")) +
-  theme(
-    legend.position.inside = c(0.07, 0.93),
-    strip.text.x.top = element_text(size = 10, margin = unit(rep(0.08, 4), "cm"))
-  )
 ```
 
 
